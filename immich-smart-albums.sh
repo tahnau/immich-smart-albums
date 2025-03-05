@@ -31,24 +31,15 @@ source secrets.sh
 
 # Person1's account
 export IMMICH_API_KEY="$IMMICH_API_KEY_1"
-
-# Sync Person1's family album
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson1_facePerson1.json --album $FAMILY_ALBUM
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson1_facePerson2.json --album $FAMILY_ALBUM
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson1_facePerson3.json --album $FAMILY_ALBUM
-
-# Sync Person1's Person3 album
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson1_facePerson3.json --album $PUBLIC_ALBUM --exclude-smart-file filters/smart-nsfw-*.json
-
 #python3 immich-smart-albums.py --include-metadata-file filters/metadataTakenBefore2015.json --include-local-filter-file filters/localfilter-2014-11-18.json
 
 # Person2's account
 export IMMICH_API_KEY="$IMMICH_API_KEY_2"
-
-# Sync Person2's family album
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson2_facePerson1.json --album $FAMILY_ALBUM
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson2_facePerson2.json --album $FAMILY_ALBUM
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson2_facePerson3.json --album $FAMILY_ALBUM
-
-# Sync Person2's Person3 album
 python3 immich-smart-albums.py --include-metadata-file filters/accountPerson2_facePerson3.json --album $PUBLIC_ALBUM --exclude-smart-file filters/smart-nsfw-*.json
