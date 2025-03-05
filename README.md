@@ -129,7 +129,7 @@ immich.example.com/user-settings?isOpen=api-keys
   - Use the preview mode (without --album) to check results before adding to albums
 - Local filtering requires metadata or smart search as well - it cannot run standalone
 - Combining multiple search criteria in a single JSON query is more efficient
-- Always set `resultLimit` in smart-search as the API will otherwise return all images sorted by relevance: ```json {"query": "mountain", "resultLimit": 200}```
+- Always set `resultLimit` in smart-search as the API will otherwise return all Immich images sorted by relevance: ```json {"query": "mountain", "resultLimit": 200}```
 
 
 
