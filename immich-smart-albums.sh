@@ -13,9 +13,7 @@ echo '{"personIds":["34a5f538-5650-4933-9d2a-832da71766c7"]}' > filters/accountP
 echo '{"query":"nsfw", "resultLimit":300}' > filters/smart-nsfw-1.json
 echo '{"query":"nudity", "resultLimit":300}' > filters/smart-nsfw-2.json
 echo '{"query":"porn", "resultLimit":300}' > filters/smart-nsfw-3.json
-echo '{"query":"without clothes", "resultLimit":300}' > filters/smart-nsfw-4.json
-echo '{"query":"naked", "resultLimit":300}' > filters/smart-nsfw-5.json
-echo '{"query":"panties", "resultLimit":300}' > filters/smart-nsfw-6.json
+echo '{"query":"nude", "resultLimit":300}' > filters/smart-nsfw-4.json
 
 echo '{"takenBefore":"2015-04-11T00:00:00.000Z"}' > filters/metadataTakenBefore2015.json
 echo '[ { "path": "$.originalPath", "regex": "^/trip/2014-11-18", "description": "Files from trip with path starting with /trip/2014-11-18" } ]' > filters/localfilter-2014-11-18.json
