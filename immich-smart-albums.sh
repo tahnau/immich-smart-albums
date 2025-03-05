@@ -3,7 +3,6 @@
 # Navigate to the project directory
 cd "$(dirname "$0")" || { echo "Failed to change directory"; exit 1; }
 
-
 # Create JSON config files inline
 echo '{"personIds":["8fbe472e-7463-4d97-ae2d-3efb3270e153"],"takenAfter":"2015-04-11T00:00:00.000Z"}' > filters/accountPerson1_facePerson1.json
 echo '{"personIds":["1918270a-5c60-4504-ae0b-e1b6382c7cd8"]}' > filters/accountPerson1_facePerson2.json
@@ -25,11 +24,14 @@ echo '[ { "path": "$.originalPath", "regex": "^/trip/2014-11-18", "description":
 # Define album IDs
 FAMILY_ALBUM="0a750717-7bc7-4a73-b4c4-405fb0888ba3"
 PUBLIC_ALBUM="bb8ee34a-a22d-4bb9-aa67-d394353a06c0"
+export IMMICH_SERVER_URL=http://127.0.0.1:2283
 
 source secrets.sh
+# Create a secrets.sh file:
+#   export IMMICH_API_KEY_1=aaaaaaaaaaaa
+#   export IMMICH_API_KEY_2=bbbbbbbbbbbb
 
-# toni's account
-export IMMICH_SERVER_URL=http://127.0.0.1:2283
+# Person1's account
 export IMMICH_API_KEY="$IMMICH_API_KEY_1"
 
 # Sync Person1's family album
@@ -42,7 +44,7 @@ python3 immich-smart-albums.py --include-metadata-file filters/accountPerson1_fa
 
 #python3 immich-smart-albums.py --include-metadata-file filters/metadataTakenBefore2015.json --include-local-filter-file filters/localfilter-2014-11-18.json
 
-# maija's account
+# Person2's account
 export IMMICH_API_KEY="$IMMICH_API_KEY_2"
 
 # Sync Person2's family album

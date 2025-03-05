@@ -281,6 +281,12 @@ def main():
         log("Error: API key and server URL required.", fg="red", verbose_only=False, verbose=args.verbose)
         return 1
 
+    # Check that include-local-filter-file is not used without include-metadata-file or include-smart-file
+    if args.include_local_filter_file and not (args.include_metadata_file or args.include_smart_file):
+        log("Error: --include-local-filter-file requires either --include-metadata-file or --include-smart-file to fetch data to filter.",
+            fg="red", verbose_only=False, verbose=args.verbose)
+        return 1
+
     # Remove trailing slash from server URL if present
     args.server = args.server.rstrip('/')
 

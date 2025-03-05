@@ -7,7 +7,7 @@ A Python utility for creating and managing dynamic photo albums in Immich using 
 Immich Smart Albums automates photo organization by adding matching images to albums based on search criteria. It:
 - Uses Immich's native metadata and smart search APIs
 - Applies local JSONPath and regex filters to image metadata
-- Works non-destructively (only adds to albums, never deletes)
+- Works non-destructively (only adds to albums, never deletes or modifies)
 - Can run via crontab for daily maintenance
 
 ## Features
@@ -18,6 +18,15 @@ Immich Smart Albums automates photo organization by adding matching images to al
 - Combine multiple filters with inclusion/exclusion logic
 - Find photos with specific combinations of people
 - Combine person recognition with object detection (e.g., people with cars)
+
+## Real-World Use Case
+Originally created for a family setup with separate Immich accounts:
+
+Automatically collects photos of specific people from both accounts into a shared family album
+Creates a "safe for relatives" version by filtering out potential NSFW content
+Works alongside manual additions to the shared albums
+
+This approach combines the advantages of separate accounts with the convenience of centralized collections.
 
 ## Requirements
 
