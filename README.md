@@ -124,9 +124,9 @@ immich.example.com/user-settings?isOpen=api-keys
 
 ## Important Notes
 - Smart search is not always "smart" - be aware of its limitations:
--- When using resultLimit, the API may return unrelated images after relevant matches
--- Example: If you search for "car" with resultLimit: 200 but only have 2 car photos, you'll get 198 unrelated images. Deal with it.
--- Use the preview mode (without --album) to check results before adding to albums
+  - When using resultLimit, the API may return unrelated images after relevant matches
+  - Example: If you search for "car" with resultLimit: 200 but only have 2 car photos, you'll get 198 unrelated images. Deal with it.
+  - Use the preview mode (without --album) to check results before adding to albums
 - Local filtering requires metadata or smart search as well - it cannot run standalone
 - Combining multiple search criteria in a single JSON query is more efficient
 - Always set `resultLimit` in smart-search as the API will otherwise return all images sorted by relevance: ```json {"query": "mountain", "resultLimit": 200}```
