@@ -50,8 +50,19 @@ def api_request(method, url, headers, params=None, json_data=None, verbose=False
         log(f"API request error: {str(e)}", fg="red", verbose_only=False, verbose=verbose)
         return None
 
+
 def load_json_file(file_path, verbose=False):
-    """Load and validate a JSON file"""
+    """Load and validate a JSON file or JSON string"""
+    # If not a .json file, try parsing as JSON string first
+    if not str(file_path).endswith('.json'):
+        try:
+            data = json.loads(file_path)
+            log("Successfully parsed input as JSON string", verbose_only=True, verbose=verbose)
+            return data
+        except json.JSONDecodeError:
+            # Not valid JSON string, try as file path instead
+            pass
+    # Handle as file path
     try:
         with open(file_path, 'r') as f:
             data = json.load(f)
@@ -188,20 +199,37 @@ def apply_filters(assets, filters, is_include=True, verbose=False):
 
     return filtered_assets
 
-def parse_filters(filter_files, filter_strings, verbose=False):
-    """Load and parse filters from files and command-line strings"""
+import os
+import json
+
+def parse_filters(filter_inputs, filter_strings, verbose=False):
+    """Load and parse filters from file paths or raw JSON string values."""
     filters = []
 
-    # Load from files
-    for file_path in filter_files or []:
-        filter_data = load_json_file(file_path, verbose)
-        if filter_data and isinstance(filter_data, list):
-            filters.extend(filter_data)
-            log(f"Loaded {len(filter_data)} filters from {file_path}", verbose_only=True, verbose=verbose)
-        elif filter_data:
-            log(f"Filter file {file_path} must contain a JSON array", fg="red", verbose_only=False, verbose=verbose)
+    # Process file paths or raw JSON inputs
+    for filter_input in filter_inputs or []:
+        filter_data = None
+        # Check if the input is a file path that exists
+        if os.path.exists(filter_input):
+            filter_data = load_json_file(filter_input, verbose)
+            if filter_data and isinstance(filter_data, list):
+                filters.extend(filter_data)
+                log(f"Loaded {len(filter_data)} filters from file {filter_input}", verbose_only=True, verbose=verbose)
+            elif filter_data:
+                log(f"Filter file {filter_input} must contain a JSON array", fg="red", verbose_only=False, verbose=verbose)
+        else:
+            # Try to parse the input as a raw JSON string
+            try:
+                filter_data = json.loads(filter_input)
+                if isinstance(filter_data, list):
+                    filters.extend(filter_data)
+                    log(f"Loaded {len(filter_data)} filters from raw JSON value", verbose_only=True, verbose=verbose)
+                else:
+                    log(f"Raw JSON input must be a JSON array, got {type(filter_data).__name__}", fg="red", verbose_only=False, verbose=verbose)
+            except Exception as e:
+                log(f"Error parsing filter input {filter_input}: {e}", fg="red", verbose_only=False, verbose=verbose)
 
-    # Parse command-line filters
+    # Process command-line filters (e.g., "path:regex")
     for filter_str in filter_strings or []:
         parts = filter_str.split(':', 1)
         if len(parts) == 2:
