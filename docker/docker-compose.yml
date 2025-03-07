@@ -1,0 +1,11 @@
+services:
+  immich-smart-albums:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - IMMICH_SERVER_URL=${IMMICH_SERVER_URL}
+      - IMMICH_API_KEY=${IMMICH_API_KEY}
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped 
