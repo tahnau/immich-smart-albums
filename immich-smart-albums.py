@@ -3,6 +3,7 @@ import requests
 import argparse
 import json
 import re
+import os
 from functools import reduce
 from jsonpath_ng import parse
 
@@ -49,7 +50,6 @@ def api_request(method, url, headers, params=None, json_data=None, verbose=False
     except requests.exceptions.RequestException as e:
         log(f"API request error: {str(e)}", fg="red", verbose_only=False, verbose=verbose)
         return None
-
 
 def load_json_file(file_path, verbose=False):
     """Load and validate a JSON file or JSON string"""
@@ -127,14 +127,15 @@ def execute_search(server_url, api_key, query, search_type, verbose=False):
 
     return all_assets
 
-def apply_filters(assets, filters, is_include=True, verbose=False):
-    """Apply JSONPath and regex filters to assets"""
+def apply_filters(assets, filters, is_include=True, use_intersection=True, verbose=False):
+    """Apply JSONPath and regex filters to assets with union or intersection mode"""
     if not filters:
         # If no include filters, include all. If no exclude filters, exclude none.
         return {asset["id"] for asset in assets} if is_include else set()
 
     filtered_assets = set()
     filter_counts = {}  # Track count per filter
+    asset_matches = {asset["id"]: set() for asset in assets}  # Track which filters matched each asset
 
     for filter_item in filters:
         path = filter_item.get("path")
@@ -142,9 +143,10 @@ def apply_filters(assets, filters, is_include=True, verbose=False):
         description = filter_item.get("description", f"{path}:{regex}")
         filter_counts[description] = 0
 
+    # Process each asset against all filters
     for asset in assets:
         asset_id = asset["id"]
-        match_all = True
+        matched_filters = set()
 
         for filter_item in filters:
             path = filter_item.get("path")
@@ -155,54 +157,56 @@ def apply_filters(assets, filters, is_include=True, verbose=False):
                 jsonpath_expr = parse(path)
                 matches = [match.value for match in jsonpath_expr.find(asset)]
 
-                # For include filters, all must match; for exclude filters, any match excludes
                 if matches:
                     if regex:
                         regex_match = any(re.search(regex, str(match), re.IGNORECASE) for match in matches)
-                        if is_include and not regex_match:
-                            match_all = False
-                            log(f"Asset {asset_id} failed include filter: {description}", verbose_only=True, verbose=verbose)
-                            break
-                        elif not is_include and regex_match:
-                            filtered_assets.add(asset_id)
+                        if regex_match:
+                            matched_filters.add(description)
+                            asset_matches[asset_id].add(description)
                             filter_counts[description] += 1
-                            log(f"Asset {asset_id} matched exclude filter: {description}", verbose_only=True, verbose=verbose)
-                            break
-                    elif not is_include:
-                        # No regex but matches path, exclude it
-                        filtered_assets.add(asset_id)
+                            log(f"Asset {asset_id} matched filter: {description}", verbose_only=True, verbose=verbose)
+                    else:
+                        # No regex but matches path
+                        matched_filters.add(description)
+                        asset_matches[asset_id].add(description)
                         filter_counts[description] += 1
-                        log(f"Asset {asset_id} matched exclude filter path: {path}", verbose_only=True, verbose=verbose)
-                        break
-                elif is_include:
-                    # No matches for include filter
-                    match_all = False
-                    log(f"Asset {asset_id} failed include filter (no path matches): {path}", verbose_only=True, verbose=verbose)
-                    break
+                        log(f"Asset {asset_id} matched path: {path}", verbose_only=True, verbose=verbose)
             except Exception as e:
                 log(f"JSONPath error for asset {asset_id} with expression '{path}': {str(e)}", fg="red", verbose_only=True, verbose=verbose)
-                if is_include:
-                    match_all = False
-                    break
 
-        # Add if all filters matched
-        if is_include and match_all:
-            filtered_assets.add(asset_id)
-            for desc in filter_counts:
-                filter_counts[desc] += 1
-            log(f"Asset {asset_id} passed all include filters", verbose_only=True, verbose=verbose)
+        # Determine if this asset should be included/excluded based on filter mode
+        if is_include:
+            if use_intersection:
+                # For intersection mode, asset must match ALL filters
+                if len(matched_filters) == len(filters):
+                    filtered_assets.add(asset_id)
+                    log(f"Asset {asset_id} matched ALL include filters (intersection mode)", verbose_only=True, verbose=verbose)
+            else:
+                # For union mode, asset must match ANY filter
+                if matched_filters:
+                    filtered_assets.add(asset_id)
+                    log(f"Asset {asset_id} matched at least one include filter (union mode)", verbose_only=True, verbose=verbose)
+        else:  # exclusion logic
+            if use_intersection:
+                # For intersection mode, asset must match ALL filters to be excluded
+                if len(matched_filters) == len(filters):
+                    filtered_assets.add(asset_id)
+                    log(f"Asset {asset_id} matched ALL exclude filters (intersection mode)", verbose_only=True, verbose=verbose)
+            else:
+                # For union mode, asset must match ANY filter to be excluded
+                if matched_filters:
+                    filtered_assets.add(asset_id)
+                    log(f"Asset {asset_id} matched at least one exclude filter (union mode)", verbose_only=True, verbose=verbose)
 
     # Log results per filter
     filter_type = "include" if is_include else "exclude"
+    mode_type = "intersection" if use_intersection else "union"
     for desc, count in filter_counts.items():
-        log(f"Filter '{desc}' ({filter_type}) matched {count} assets", verbose_only=False, verbose=verbose)
+        log(f"Filter '{desc}' ({filter_type}, {mode_type} mode) matched {count} assets", verbose_only=False, verbose=verbose)
 
     return filtered_assets
 
-import os
-import json
-
-def parse_filters(filter_inputs, filter_strings, verbose=False):
+def parse_filters(filter_inputs, verbose=False):
     """Load and parse filters from file paths or raw JSON string values."""
     filters = []
 
@@ -227,16 +231,13 @@ def parse_filters(filter_inputs, filter_strings, verbose=False):
                 else:
                     log(f"Raw JSON input must be a JSON array, got {type(filter_data).__name__}", fg="red", verbose_only=False, verbose=verbose)
             except Exception as e:
-                log(f"Error parsing filter input {filter_input}: {e}", fg="red", verbose_only=False, verbose=verbose)
-
-    # Process command-line filters (e.g., "path:regex")
-    for filter_str in filter_strings or []:
-        parts = filter_str.split(':', 1)
-        if len(parts) == 2:
-            filters.append({"path": parts[0], "regex": parts[1]})
-            log(f"Added filter from command line: {filter_str}", verbose_only=True, verbose=verbose)
-        else:
-            log(f"Invalid filter format: {filter_str}. Expected 'path:regex'", fg="yellow", verbose_only=False, verbose=verbose)
+                # If not a valid JSON string, check if it's a simple path:regex format
+                parts = filter_input.split(':', 1)
+                if len(parts) == 2:
+                    filters.append({"path": parts[0], "regex": parts[1]})
+                    log(f"Added filter from command line: {filter_input}", verbose_only=True, verbose=verbose)
+                else:
+                    log(f"Error parsing filter input {filter_input}: {e}", fg="red", verbose_only=False, verbose=verbose)
 
     return filters
 
@@ -269,6 +270,57 @@ def add_assets_to_album(server_url, api_key, album_id, asset_ids, chunk_size=500
 
     return total_added
 
+def execute_search_queries(server_url, api_key, query_files, search_type, verbose=False):
+    """Execute multiple search queries and return all assets"""
+    all_assets = []
+    asset_sets = []
+    
+    if not query_files:
+        return all_assets, asset_sets
+        
+    log(f"Processing {len(query_files)} {search_type} search files", verbose_only=False, verbose=verbose)
+    
+    for i, file_path in enumerate(query_files):
+        log(f"Processing {search_type} file [{i+1}/{len(query_files)}]: {file_path}", verbose_only=False, verbose=verbose)
+        
+        query = load_json_file(file_path, verbose)
+        if not query:
+            log(f"Failed to load query from {file_path}", fg="red", verbose_only=False, verbose=verbose)
+            continue
+            
+        assets = execute_search(server_url, api_key, query, search_type, verbose=verbose)
+        
+        if not assets:
+            log(f"No assets found for {search_type} search in {file_path}", fg="yellow", verbose_only=False, verbose=verbose)
+            continue
+            
+        # Store asset IDs for this search
+        asset_ids = {asset["id"] for asset in assets}
+        asset_sets.append(asset_ids)
+        
+        # Add to all assets
+        all_assets.extend(assets)
+        
+        log(f"Found {len(assets)} assets matching {search_type} criteria in {file_path}",
+            verbose_only=False, verbose=verbose)
+            
+    return all_assets, asset_sets
+
+def calculate_combined_assets(asset_sets, mode="intersection"):
+    """Calculate the combined asset set based on mode (union or intersection)"""
+    if not asset_sets:
+        return set()
+        
+    if len(asset_sets) == 1:
+        return asset_sets[0]
+        
+    if mode == "intersection":
+        # Return intersection of all sets
+        return reduce(lambda x, y: x.intersection(y), asset_sets)
+    else:  # union mode
+        # Return union of all sets
+        return reduce(lambda x, y: x.union(y), asset_sets)
+
 def main():
     # Create the parser
     parser = argparse.ArgumentParser(
@@ -281,24 +333,44 @@ def main():
     parser.add_argument("--album", help="ID of the album to add matching assets to (optional)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging")
     parser.add_argument("--max-assets", type=int, help="Maximum number of assets to process", default=None)
-    parser.add_argument("--include-metadata-file", nargs="+", type=str,
-                      help="Path to one or more JSON files containing metadata search queries (e.g., --include-metadata-file file1.json file2.json)")
-    parser.add_argument("--include-smart-file", nargs="+", type=str,
-                      help="Path to one or more JSON files containing smart search queries (e.g., --include-smart-file file1.json file2.json)")
-    parser.add_argument("--exclude-metadata-file", nargs="+", type=str,
-                      help="Path to one or more JSON files containing exclusion metadata search queries (e.g., --exclude-metadata-file file1.json file2.json)")
-    parser.add_argument("--exclude-smart-file", nargs="+", type=str,
-                      help="Path to one or more JSON files containing exclusion smart search queries (e.g., --exclude-smart-file file1.json file2.json)")
-    parser.add_argument("--include-local-filter-file", nargs="+", type=str,
-                      help="Path to one or more JSON files containing local JSONPath and regex include filters (e.g., --include-local-filter-file file1.json file2.json)")
-    parser.add_argument("--exclude-local-filter-file", nargs="+", type=str,
-                      help="Path to one or more JSON files containing local JSONPath and regex exclude filters (e.g., --exclude-local-filter-file file1.json file2.json)")
+    
+    # New flexible search options
+    # Smart search options
+    parser.add_argument("--include-smart-union", nargs="+", type=str,
+                      help="Path to one or more JSON files containing smart search queries (union mode)")
+    parser.add_argument("--include-smart-intersection", nargs="+", type=str,
+                      help="Path to one or more JSON files containing smart search queries (intersection mode)")
+    parser.add_argument("--exclude-smart-union", nargs="+", type=str,
+                      help="Path to one or more JSON files containing exclusion smart search queries (union mode)")
+    parser.add_argument("--exclude-smart-intersection", nargs="+", type=str,
+                      help="Path to one or more JSON files containing exclusion smart search queries (intersection mode)")
+    
+    # Metadata search options
+    parser.add_argument("--include-metadata-union", nargs="+", type=str,
+                      help="Path to one or more JSON files containing metadata search queries (union mode)")
+    parser.add_argument("--include-metadata-intersection", nargs="+", type=str,
+                      help="Path to one or more JSON files containing metadata search queries (intersection mode)")
+    parser.add_argument("--exclude-metadata-union", nargs="+", type=str,
+                      help="Path to one or more JSON files containing exclusion metadata search queries (union mode)")
+    parser.add_argument("--exclude-metadata-intersection", nargs="+", type=str,
+                      help="Path to one or more JSON files containing exclusion metadata search queries (intersection mode)")
+    
+    # Local filter options
+    parser.add_argument("--include-local-filter-union", nargs="+", type=str,
+                      help="Path to one or more JSON files or filter strings for local JSONPath and regex include filters (union mode)")
+    parser.add_argument("--include-local-filter-intersection", nargs="+", type=str,
+                      help="Path to one or more JSON files or filter strings for local JSONPath and regex include filters (intersection mode)")
+    parser.add_argument("--exclude-local-filter-union", nargs="+", type=str,
+                      help="Path to one or more JSON files or filter strings for local JSONPath and regex exclude filters (union mode)")
+    parser.add_argument("--exclude-local-filter-intersection", nargs="+", type=str,
+                      help="Path to one or more JSON files or filter strings for local JSONPath and regex exclude filters (intersection mode)")
+    
+
 
     # Parse arguments
     args = parser.parse_args()
 
     # Check for environment variables if not provided as arguments
-    import os
     if not args.key:
         args.key = os.environ.get("IMMICH_API_KEY")
     if not args.server:
@@ -306,171 +378,141 @@ def main():
 
     # Ensure required arguments are provided
     if not args.key:
-        log("Error: API key is required. Set IMMICH_API_KEY environment variable or use --key parameter.", 
+        log("Error: API key is required. Set IMMICH_API_KEY environment variable or use --key parameter.",
             fg="red", verbose_only=False, verbose=args.verbose)
         return 1
     if not args.server:
-        log("Error: Server URL is required. Set IMMICH_SERVER_URL environment variable or use --server parameter.", 
+        log("Error: Server URL is required. Set IMMICH_SERVER_URL environment variable or use --server parameter.",
             fg="red", verbose_only=False, verbose=args.verbose)
         return 1
 
-    # Check that include-local-filter-file is not used without include-metadata-file or include-smart-file
-    if args.include_local_filter_file and not (args.include_metadata_file or args.include_smart_file):
-        log("Error: --include-local-filter-file requires either --include-metadata-file or --include-smart-file to fetch data to filter.",
-            fg="red", verbose_only=False, verbose=args.verbose)
-        return 1
 
-    # Debug the arguments to ensure they're parsed correctly
-    if args.include_smart_file:
-        log(f"Smart search files: {args.include_smart_file}", verbose_only=False, verbose=args.verbose)
-    
+
     # Remove trailing slash from server URL if present
     args.server = args.server.rstrip('/')
 
     # Initialize collections
-    included_metadata_assets = []
-    included_smart_assets = []
-    excluded_assets = set()
-    unique_assets = {}
     all_assets = []
-
-    # Step 1: Process metadata search files
-    if args.include_metadata_file:
-        log(f"Processing {len(args.include_metadata_file)} metadata search files", verbose_only=False, verbose=args.verbose)
-        for i, file_path in enumerate(args.include_metadata_file):
-            log(f"Processing metadata file [{i+1}/{len(args.include_metadata_file)}]: {file_path}", verbose_only=False, verbose=args.verbose)
-            
-            query = load_json_file(file_path, args.verbose)
-            if not query:
-                log(f"Failed to load query from {file_path}", fg="red", verbose_only=False, verbose=args.verbose)
-                continue
-                
-            assets = execute_search(args.server, args.key, query, "metadata", verbose=args.verbose)
-            
-            if not assets:
-                log(f"No assets found for metadata search in {file_path}", fg="yellow", verbose_only=False, verbose=args.verbose)
-                continue
-                
-            # Store asset IDs for this search
-            asset_ids = {asset["id"] for asset in assets}
-            included_metadata_assets.append(asset_ids)
-            
-            # Add to all assets for filtering later
-            all_assets.extend(assets)
-            for asset in assets:
-                unique_assets[asset["id"]] = asset
-            
-            if len(included_metadata_assets) == 1:
-                log(f"Found {len(assets)} assets matching metadata criteria in {file_path}", 
-                    verbose_only=False, verbose=args.verbose)
-            else:
-                current_intersection = reduce(lambda x, y: x.intersection(y), included_metadata_assets)
-                log(f"Found {len(assets)} assets matching metadata criteria in {file_path} (intersection so far: {len(current_intersection)})", 
-                    verbose_only=False, verbose=args.verbose)
-
-    # Step 2: Process smart search files
-    if args.include_smart_file:
-        log(f"Processing {len(args.include_smart_file)} smart search files", verbose_only=False, verbose=args.verbose)
-        for i, file_path in enumerate(args.include_smart_file):
-            log(f"Processing smart file [{i+1}/{len(args.include_smart_file)}]: {file_path}", verbose_only=False, verbose=args.verbose)
-            
-            query = load_json_file(file_path, args.verbose)
-            if not query:
-                log(f"Failed to load query from {file_path}", fg="red", verbose_only=False, verbose=args.verbose)
-                continue
-                
-            assets = execute_search(args.server, args.key, query, "smart", verbose=args.verbose)
-            
-            if not assets:
-                log(f"No assets found for smart search in {file_path}", fg="yellow", verbose_only=False, verbose=args.verbose)
-                continue
-                
-            # Store asset IDs for this search
-            asset_ids = {asset["id"] for asset in assets}
-            included_smart_assets.append(asset_ids)
-            
-            # Add to all assets for filtering later
-            all_assets.extend(assets)
-            for asset in assets:
-                unique_assets[asset["id"]] = asset
-            
-            if len(included_smart_assets) == 1:
-                log(f"Found {len(assets)} assets matching smart criteria in {file_path}", 
-                    verbose_only=False, verbose=args.verbose)
-            else:
-                current_intersection = reduce(lambda x, y: x.intersection(y), included_smart_assets)
-                log(f"Found {len(assets)} assets matching smart criteria in {file_path} (intersection so far: {len(current_intersection)})", 
-                    verbose_only=False, verbose=args.verbose)
-
-    # Step 3: Calculate final intersection
-    # First, calculate intersection within each search type
-    metadata_result = set()
-    if included_metadata_assets:
-        metadata_result = reduce(lambda x, y: x.intersection(y), included_metadata_assets)
-        log(f"Metadata search intersection: {len(metadata_result)} assets", verbose_only=False, verbose=args.verbose)
-    
-    smart_result = set()
-    if included_smart_assets:
-        smart_result = reduce(lambda x, y: x.intersection(y), included_smart_assets)
-        log(f"Smart search intersection: {len(smart_result)} assets", verbose_only=False, verbose=args.verbose)
-    
-    # Then, calculate intersection between search types if both are used
+    unique_assets = {}
     final_asset_ids = set()
+
+    # Step 1: Process include metadata search files (both intersection and union modes)
+    metadata_union_assets, metadata_union_sets = execute_search_queries(
+        args.server, args.key, args.include_metadata_union, "metadata", args.verbose)
+    metadata_intersection_assets, metadata_intersection_sets = execute_search_queries(
+        args.server, args.key, args.include_metadata_intersection, "metadata", args.verbose)
+    
+    # Add all assets to our collections
+    all_assets.extend(metadata_union_assets)
+    all_assets.extend(metadata_intersection_assets)
+    
+    # Calculate combined metadata assets based on modes
+    metadata_union_result = calculate_combined_assets(metadata_union_sets, "union")
+    metadata_intersection_result = calculate_combined_assets(metadata_intersection_sets, "intersection")
+    
+    if metadata_union_result and metadata_intersection_result:
+        # If both modes are used for metadata, take the intersection of their results
+        metadata_result = metadata_union_result.intersection(metadata_intersection_result)
+        log(f"Combined metadata search result (union ∩ intersection): {len(metadata_result)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    elif metadata_union_result:
+        metadata_result = metadata_union_result
+        log(f"Metadata search union result: {len(metadata_result)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    elif metadata_intersection_result:
+        metadata_result = metadata_intersection_result
+        log(f"Metadata search intersection result: {len(metadata_result)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    else:
+        metadata_result = set()
+
+    # Step 2: Process include smart search files (both intersection and union modes)
+    smart_union_assets, smart_union_sets = execute_search_queries(
+        args.server, args.key, args.include_smart_union, "smart", args.verbose)
+    smart_intersection_assets, smart_intersection_sets = execute_search_queries(
+        args.server, args.key, args.include_smart_intersection, "smart", args.verbose)
+    
+    # Add all assets to our collections
+    all_assets.extend(smart_union_assets)
+    all_assets.extend(smart_intersection_assets)
+    
+    # Calculate combined smart assets based on modes
+    smart_union_result = calculate_combined_assets(smart_union_sets, "union")
+    smart_intersection_result = calculate_combined_assets(smart_intersection_sets, "intersection")
+    
+    if smart_union_result and smart_intersection_result:
+        # If both modes are used for smart, take the intersection of their results
+        smart_result = smart_union_result.intersection(smart_intersection_result)
+        log(f"Combined smart search result (union ∩ intersection): {len(smart_result)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    elif smart_union_result:
+        smart_result = smart_union_result
+        log(f"Smart search union result: {len(smart_result)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    elif smart_intersection_result:
+        smart_result = smart_intersection_result
+        log(f"Smart search intersection result: {len(smart_result)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    else:
+        smart_result = set()
+
+    # Step 3: Calculate intersection between metadata and smart results if both exist
     if metadata_result and smart_result:
-        # Both search types used, take intersection
         final_asset_ids = metadata_result.intersection(smart_result)
         log(f"Intersection between metadata and smart searches: {len(final_asset_ids)} assets",
             verbose_only=False, verbose=args.verbose)
     elif metadata_result:
-        # Only metadata searches used
         final_asset_ids = metadata_result
     elif smart_result:
-        # Only smart searches used
         final_asset_ids = smart_result
-    
+
     # Step 4: Execute exclude searches
-    # Process exclude metadata files
-    for file_path in args.exclude_metadata_file or []:
-        query = load_json_file(file_path, args.verbose)
-        if query is not None:
-            log(f"Executing metadata exclusion search from {file_path}", verbose_only=False, verbose=args.verbose)
-            assets = execute_search(args.server, args.key, query, "metadata", verbose=args.verbose)
+    # Process exclude metadata union
+    exclude_metadata_union_assets, exclude_metadata_union_sets = execute_search_queries(
+        args.server, args.key, args.exclude_metadata_union, "metadata", args.verbose)
+    exclude_metadata_union_result = calculate_combined_assets(exclude_metadata_union_sets, "union")
+    
+    # Process exclude metadata intersection
+    exclude_metadata_intersection_assets, exclude_metadata_intersection_sets = execute_search_queries(
+        args.server, args.key, args.exclude_metadata_intersection, "metadata", args.verbose)
+    exclude_metadata_intersection_result = calculate_combined_assets(exclude_metadata_intersection_sets, "intersection")
+    
+    # Add exclude assets to all_assets for later filtering
+    all_assets.extend(exclude_metadata_union_assets)
+    all_assets.extend(exclude_metadata_intersection_assets)
+    
+    # Combine exclude metadata results
+    exclude_metadata_result = exclude_metadata_union_result.union(exclude_metadata_intersection_result)
+    
+    # Process exclude smart union
+    exclude_smart_union_assets, exclude_smart_union_sets = execute_search_queries(
+        args.server, args.key, args.exclude_smart_union, "smart", args.verbose)
+    exclude_smart_union_result = calculate_combined_assets(exclude_smart_union_sets, "union")
+    
+    # Process exclude smart intersection
+    exclude_smart_intersection_assets, exclude_smart_intersection_sets = execute_search_queries(
+        args.server, args.key, args.exclude_smart_intersection, "smart", args.verbose)
+    exclude_smart_intersection_result = calculate_combined_assets(exclude_smart_intersection_sets, "intersection")
+    
+    # Add exclude assets to all_assets for later filtering
+    all_assets.extend(exclude_smart_union_assets)
+    all_assets.extend(exclude_smart_intersection_assets)
+    
+    # Combine exclude smart results
+    exclude_smart_result = exclude_smart_union_result.union(exclude_smart_intersection_result)
+    
+    # Combine all exclude results
+    exclude_result = exclude_metadata_result.union(exclude_smart_result)
+    
+    # Apply excludes if we have any
+    if exclude_result:
+        before_count = len(final_asset_ids)
+        final_asset_ids -= exclude_result
+        excluded_count = before_count - len(final_asset_ids)
+        log(f"Excluded {excluded_count} assets from search results, remaining: {len(final_asset_ids)}",
+            verbose_only=False, verbose=args.verbose)
 
-            all_assets.extend(assets)
-
-            excluded_ids = {asset["id"] for asset in assets}
-            before_count = len(final_asset_ids)
-            final_asset_ids -= excluded_ids
-            excluded_count = before_count - len(final_asset_ids)
-
-            log(f"Found {len(assets)} assets matching metadata exclusion criteria in {file_path} (excluded {excluded_count}, remaining: {len(final_asset_ids)})",
-                verbose_only=False, verbose=args.verbose)
-
-            # Track for later use
-            excluded_assets.update(excluded_ids)
-
-    # Process exclude smart files
-    for file_path in args.exclude_smart_file or []:
-        query = load_json_file(file_path, args.verbose)
-        if query is not None:
-            log(f"Executing smart exclusion search from {file_path}", verbose_only=False, verbose=args.verbose)
-            assets = execute_search(args.server, args.key, query, "smart", verbose=args.verbose)
-
-            all_assets.extend(assets)
-
-            excluded_ids = {asset["id"] for asset in assets}
-            before_count = len(final_asset_ids)
-            final_asset_ids -= excluded_ids
-            excluded_count = before_count - len(final_asset_ids)
-
-            log(f"Found {len(assets)} assets matching smart exclusion criteria in {file_path} (excluded {excluded_count}, remaining: {len(final_asset_ids)})",
-                verbose_only=False, verbose=args.verbose)
-
-            # Track for later use
-            excluded_assets.update(excluded_ids)
-
-    # Step 5: Parse and apply filters
-    # First ensure unique_assets has all assets
+    # Step 5: Ensure we have a master list of all unique assets
     unique_assets_from_all = {}
     for asset in all_assets:
         unique_assets_from_all[asset["id"]] = asset
@@ -478,71 +520,134 @@ def main():
     log(f"Processing {len(unique_assets_from_all)} unique assets for filtering",
         verbose_only=True, verbose=args.verbose)
 
-    # Load include filters
-    include_filters = parse_filters(args.include_local_filter_file, [], args.verbose)
-    log(f"Loaded {len(include_filters)} include filters", verbose_only=True, verbose=args.verbose)
+    # Step 6: Parse and apply local filters
+    # Load include filters (union mode)
+    include_union_filters = parse_filters(args.include_local_filter_union, args.verbose)
+    
+    # Load include filters (intersection mode)
+    include_intersection_filters = parse_filters(args.include_local_filter_intersection, args.verbose)
+    
+    # Load exclude filters (union mode)
+    exclude_union_filters = parse_filters(args.exclude_local_filter_union, args.verbose)
+    
+    # Load exclude filters (intersection mode)
+    exclude_intersection_filters = parse_filters(args.exclude_local_filter_intersection, args.verbose)
+    
+    log(f"Loaded {len(include_union_filters)} include union filters", verbose_only=False, verbose=args.verbose)
+    log(f"Loaded {len(include_intersection_filters)} include intersection filters", verbose_only=False, verbose=args.verbose)
+    log(f"Loaded {len(exclude_union_filters)} exclude union filters", verbose_only=False, verbose=args.verbose)
+    log(f"Loaded {len(exclude_intersection_filters)} exclude intersection filters", verbose_only=False, verbose=args.verbose)
 
-    # Load exclude filters
-    exclude_filters = parse_filters(args.exclude_local_filter_file, [], args.verbose)
-    log(f"Loaded {len(exclude_filters)} exclude filters", verbose_only=True, verbose=args.verbose)
-
-    # Apply include filters if specified
-    if include_filters:
-        # If we already have a set of assets from searches, filter them
+    # Apply include filters (union mode) if specified
+    include_union_ids = set()
+    if include_union_filters:
         if final_asset_ids:
-            # Only process assets that passed the search criteria
-            filtered_assets = [unique_assets_from_all[asset_id] for asset_id in final_asset_ids
+            # Apply to assets that have passed searches
+            filtered_assets = [unique_assets_from_all[asset_id] for asset_id in final_asset_ids 
                               if asset_id in unique_assets_from_all]
-            include_filtered_ids = apply_filters(filtered_assets, include_filters,
-                                                          is_include=True, verbose=args.verbose)
-            final_asset_ids = include_filtered_ids
+            include_union_ids = apply_filters(filtered_assets, include_union_filters, 
+                                            is_include=True, use_intersection=False, verbose=args.verbose)
         else:
             # No previous filtering, apply to all assets
-            include_filtered_ids = apply_filters(list(unique_assets_from_all.values()),
-                                                         include_filters, is_include=True, verbose=args.verbose)
-            final_asset_ids = include_filtered_ids
+            include_union_ids = apply_filters(list(unique_assets_from_all.values()),
+                                            include_union_filters, is_include=True, 
+                                            use_intersection=False, verbose=args.verbose)
 
+    # Apply include filters (intersection mode) if specified
+    include_intersection_ids = set()
+    if include_intersection_filters:
+        if final_asset_ids:
+            # Apply to assets that have passed searches
+            filtered_assets = [unique_assets_from_all[asset_id] for asset_id in final_asset_ids 
+                              if asset_id in unique_assets_from_all]
+            include_intersection_ids = apply_filters(filtered_assets, include_intersection_filters, 
+                                            is_include=True, use_intersection=True, verbose=args.verbose)
+        else:
+            # No previous filtering, apply to all assets
+            include_intersection_ids = apply_filters(list(unique_assets_from_all.values()),
+                                            include_intersection_filters, is_include=True, 
+                                            use_intersection=True, verbose=args.verbose)
+
+    # Combine include filter results if both types are specified
+    if include_union_ids and include_intersection_ids:
+        # Take the intersection of both results
+        include_filter_ids = include_union_ids.intersection(include_intersection_ids)
+        log(f"Combined include filter result (union ∩ intersection): {len(include_filter_ids)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    elif include_union_ids:
+        include_filter_ids = include_union_ids
+        log(f"Include filter union result: {len(include_filter_ids)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    elif include_intersection_ids:
+        include_filter_ids = include_intersection_ids
+        log(f"Include filter intersection result: {len(include_filter_ids)} assets", 
+            verbose_only=False, verbose=args.verbose)
+    else:
+        include_filter_ids = set()
+
+    # Apply include filters to final asset set if we have them
+    if include_filter_ids:
+        if final_asset_ids:
+            final_asset_ids = final_asset_ids.intersection(include_filter_ids)
+        else:
+            final_asset_ids = include_filter_ids
         log(f"After applying include filters: {len(final_asset_ids)} assets remaining",
             verbose_only=False, verbose=args.verbose)
 
-    # Apply exclude filters if specified
-    if exclude_filters:
-        # Only process assets that are still included
+    # Apply exclude filters (union mode)
+    exclude_union_ids = set()
+    if exclude_union_filters:
         if final_asset_ids:
             filtered_assets = [unique_assets_from_all[asset_id] for asset_id in final_asset_ids
                               if asset_id in unique_assets_from_all]
-            exclude_filtered_ids = apply_filters(filtered_assets, exclude_filters,
-                                                         is_include=False, verbose=args.verbose)
-            final_asset_ids -= exclude_filtered_ids
+            exclude_union_ids = apply_filters(filtered_assets, exclude_union_filters,
+                                           is_include=False, use_intersection=False, verbose=args.verbose)
         else:
-            # Apply to all assets
-            exclude_filtered_ids = apply_filters(list(unique_assets_from_all.values()),
-                                                         exclude_filters, is_include=False, verbose=args.verbose)
-            # Only exclude from assets we haven't already excluded
-            if excluded_assets:
-                final_asset_ids = {asset["id"] for asset in unique_assets_from_all.values()} - excluded_assets - exclude_filtered_ids
-            else:
-                final_asset_ids = {asset["id"] for asset in unique_assets_from_all.values()} - exclude_filtered_ids
+            exclude_union_ids = apply_filters(list(unique_assets_from_all.values()),
+                                           exclude_union_filters, is_include=False,
+                                           use_intersection=False, verbose=args.verbose)
 
-        log(f"After applying exclude filters: {len(final_asset_ids)} assets remaining",
+    # Apply exclude filters (intersection mode)
+    exclude_intersection_ids = set()
+    if exclude_intersection_filters:
+        if final_asset_ids:
+            filtered_assets = [unique_assets_from_all[asset_id] for asset_id in final_asset_ids
+                              if asset_id in unique_assets_from_all]
+            exclude_intersection_ids = apply_filters(filtered_assets, exclude_intersection_filters,
+                                                  is_include=False, use_intersection=True, verbose=args.verbose)
+        else:
+            exclude_intersection_ids = apply_filters(list(unique_assets_from_all.values()),
+                                                  exclude_intersection_filters, is_include=False,
+                                                  use_intersection=True, verbose=args.verbose)
+
+    # Combine exclude filter results (union of both)
+    exclude_filter_ids = exclude_union_ids.union(exclude_intersection_ids)
+    
+    # Apply exclude filters to final asset set
+    if exclude_filter_ids:
+        before_count = len(final_asset_ids)
+        final_asset_ids -= exclude_filter_ids
+        excluded_count = before_count - len(final_asset_ids)
+        log(f"After applying exclude filters: excluded {excluded_count}, {len(final_asset_ids)} assets remaining",
             verbose_only=False, verbose=args.verbose)
 
     # If we have no filters and no searches, include all assets
-    if not final_asset_ids and not include_filters and not args.include_metadata_file and not args.include_smart_file:
+    if not final_asset_ids and not include_union_filters and not include_intersection_filters and \
+       not args.include_metadata_union and not args.include_metadata_intersection and \
+       not args.include_smart_union and not args.include_smart_intersection:
         log("No include searches or filters specified. Including all non-excluded assets.",
             fg="yellow", verbose_only=False, verbose=args.verbose)
-        final_asset_ids = {asset["id"] for asset in unique_assets_from_all.values()} - excluded_assets
+        final_asset_ids = {asset["id"] for asset in unique_assets_from_all.values()} - exclude_result - exclude_filter_ids
         log(f"Total non-excluded assets: {len(final_asset_ids)}",
             verbose_only=False, verbose=args.verbose)
 
-    # Step 6: Apply limit
-    if final_asset_ids:
-        # Apply limit if specified
-        if args.max_assets and len(final_asset_ids) > args.max_assets:
-            log(f"Limiting to {args.max_assets} assets (from {len(final_asset_ids)})", verbose_only=False, verbose=args.verbose)
-            final_asset_ids = set(list(final_asset_ids)[:args.max_assets])
+    # Step 7: Apply limit
+    if final_asset_ids and args.max_assets and len(final_asset_ids) > args.max_assets:
+        log(f"Limiting to {args.max_assets} assets (from {len(final_asset_ids)})", 
+            verbose_only=False, verbose=args.verbose)
+        final_asset_ids = set(list(final_asset_ids)[:args.max_assets])
 
-    # Step 7: Display results and add to album if requested
+    # Step 8: Display results and add to album if requested
     if final_asset_ids:
         log(f"\nFinal assets selected: {len(final_asset_ids)}", verbose_only=False, verbose=args.verbose)
 
