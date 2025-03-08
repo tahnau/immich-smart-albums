@@ -23,10 +23,13 @@ echo '[ { "path": "$.originalPath", "regex": "^/trip/2014-11-18", "description":
 FAMILY_ALBUM="0a750717-7bc7-4a73-b4c4-405fb0888ba3"
 PUBLIC_ALBUM="bb8ee34a-a22d-4bb9-aa67-d394353a06c0"
 
+# Load environment variables from secrets.sh if it exists. If you use Docker, use the .env file.
 [ -f "secrets.sh" ] && source secrets.sh
 # Create a secrets.sh file:
+#   export IMMICH_API_KEY=aaaaaaaaaaaa
 #   export IMMICH_API_KEY_1=aaaaaaaaaaaa
 #   export IMMICH_API_KEY_2=bbbbbbbbbbbb
+#   export IMMICH_SERVER_URL=http://localhost:2283
 
 # Person1's account
 export IMMICH_API_KEY="$IMMICH_API_KEY_1"
