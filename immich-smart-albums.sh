@@ -22,9 +22,8 @@ echo '[ { "path": "$.originalPath", "regex": "^/trip/2014-11-18", "description":
 # Define album IDs
 FAMILY_ALBUM="0a750717-7bc7-4a73-b4c4-405fb0888ba3"
 PUBLIC_ALBUM="bb8ee34a-a22d-4bb9-aa67-d394353a06c0"
-export IMMICH_SERVER_URL=http://127.0.0.1:2283
 
-source secrets.sh
+[ -f "secrets.sh" ] && source secrets.sh
 # Create a secrets.sh file:
 #   export IMMICH_API_KEY_1=aaaaaaaaaaaa
 #   export IMMICH_API_KEY_2=bbbbbbbbbbbb
