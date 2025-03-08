@@ -321,7 +321,26 @@ def calculate_combined_assets(asset_sets, mode="intersection"):
         # Return union of all sets
         return reduce(lambda x, y: x.union(y), asset_sets)
 
+def check_duplicate_args():
+    """Check if any command-line argument is used more than once"""
+    seen = {}
+    for i, arg in enumerate(sys.argv):
+        if arg.startswith('--'):
+            if arg in seen:
+                log(f"Error: Argument '{arg}' appears multiple times (lines {seen[arg]} and {i})",
+                    fg="red", verbose_only=False, verbose=True)
+                log("Instead use: {0} value1 value2 value3".format(arg), 
+                    verbose_only=False, verbose=True)
+                return False
+            seen[arg] = i
+    return True
+
 def main():
+
+    # Check for duplicate arguments
+    if not check_duplicate_args():
+        return 1
+
     # Create the parser
     parser = argparse.ArgumentParser(
         description="Search Immich for photos using metadata and smart search APIs, apply JSONPath and regex filters, and optionally add to an album."
@@ -585,14 +604,20 @@ def main():
     else:
         include_filter_ids = set()
 
-    # Apply include filters to final asset set if we have them
-    if include_filter_ids:
+    if args.include_local_filter_intersection and not include_intersection_ids:
+        # Empty intersection means final result must be empty
+        log("Include filter intersection returned 0 assets - final result must be empty",
+             fg="yellow", verbose_only=False, verbose=args.verbose)
+        final_asset_ids = set()
+    elif include_filter_ids or args.include_local_filter_intersection or args.include_local_filter_union:
+        # Apply include filters normally
         if final_asset_ids:
-            final_asset_ids = final_asset_ids.intersection(include_filter_ids)
-        else:
+            final_asset_ids = final_asset_ids.intersection(include_filter_ids) if include_filter_ids else set()
+        elif include_filter_ids:
             final_asset_ids = include_filter_ids
-        log(f"After applying include filters: {len(final_asset_ids)} assets remaining",
-            verbose_only=False, verbose=args.verbose)
+        if final_asset_ids:
+            log(f"After applying include filters: {len(final_asset_ids)} assets remaining",
+                 verbose_only=False, verbose=args.verbose)
 
     # Apply exclude filters (union mode)
     exclude_union_ids = set()
