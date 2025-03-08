@@ -59,13 +59,13 @@ Place your filter JSON files in the `config` directory. See the main [documentat
 1. Preview matching photos:
    ```bash
    docker compose run --rm immich-smart-albums \
-     --include-metadata-file /app/config/my-filter.json
+     --include-metadata-union /app/config/my-filter.json
    ```
 
 2. Create or update an album:
    ```bash
    docker compose run --rm immich-smart-albums \
-     --include-metadata-file /app/config/my-filter.json \
+     --include-metadata-union /app/config/my-filter.json \
      --album my-album-name
    ```
 
@@ -74,16 +74,16 @@ Place your filter JSON files in the `config` directory. See the main [documentat
 1. Combine multiple filters:
    ```bash
    docker compose run --rm immich-smart-albums \
-     --include-metadata-file /app/config/filter1.json \
-     --include-metadata-file /app/config/filter2.json \
+     --include-metadata-union /app/config/filter1.json \
+     --include-metadata-union /app/config/filter2.json \
      --album combined-album
    ```
 
 2. Exclude specific photos:
    ```bash
    docker compose run --rm immich-smart-albums \
-     --include-metadata-file /app/config/all-photos.json \
-     --exclude-metadata-file /app/config/private.json \
+     --include-metadata-union /app/config/all-photos.json \
+     --exclude-metadata-union /app/config/private.json \
      --album public-photos
    ```
 
