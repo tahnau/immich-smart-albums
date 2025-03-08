@@ -274,14 +274,14 @@ def main():
     parser = argparse.ArgumentParser(
         description="Search Immich for photos using metadata and smart search APIs, apply JSONPath and regex filters, and optionally add to an album."
     )
-    
+
     # Add arguments
     parser.add_argument("--key", help="Your Immich API Key (env: IMMICH_API_KEY)", default=None)
     parser.add_argument("--server", help="Your Immich server URL (env: IMMICH_SERVER_URL)", default=None)
     parser.add_argument("--album", help="ID of the album to add matching assets to (optional)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging")
     parser.add_argument("--max-assets", type=int, help="Maximum number of assets to process", default=None)
-    parser.add_argument("--include-metadata-file", nargs="+", type=str, 
+    parser.add_argument("--include-metadata-file", nargs="+", type=str,
                       help="Path to JSON file containing metadata search query (can specify multiple files)")
     parser.add_argument("--include-smart-file", nargs="+", type=str,
                       help="Path to JSON file containing smart search query (can specify multiple files)")
@@ -296,17 +296,22 @@ def main():
 
     # Parse arguments
     args = parser.parse_args()
-    
+
     # Check for environment variables if not provided as arguments
     import os
     if not args.key:
         args.key = os.environ.get("IMMICH_API_KEY")
     if not args.server:
         args.server = os.environ.get("IMMICH_SERVER_URL")
-    
+
     # Ensure required arguments are provided
-    if not args.key or not args.server:
-        log("Error: API key and server URL required.", fg="red", verbose_only=False, verbose=args.verbose)
+    if not args.key:
+        log("Error: API key is required. Set IMMICH_API_KEY environment variable or use --key parameter.", 
+            fg="red", verbose_only=False, verbose=args.verbose)
+        return 1
+    if not args.server:
+        log("Error: Server URL is required. Set IMMICH_SERVER_URL environment variable or use --server parameter.", 
+            fg="red", verbose_only=False, verbose=args.verbose)
         return 1
 
     # Check that include-local-filter-file is not used without include-metadata-file or include-smart-file
@@ -315,109 +320,154 @@ def main():
             fg="red", verbose_only=False, verbose=args.verbose)
         return 1
 
+    # Debug the arguments to ensure they're parsed correctly
+    if args.include_smart_file:
+        log(f"Smart search files: {args.include_smart_file}", verbose_only=False, verbose=args.verbose)
+    
     # Remove trailing slash from server URL if present
     args.server = args.server.rstrip('/')
 
     # Initialize collections
-    included_assets_by_search = []
+    included_metadata_assets = []
+    included_smart_assets = []
     excluded_assets = set()
     unique_assets = {}
     all_assets = []
 
-    # Step 1: Load and execute include searches
-    def process_search_files(file_paths, search_type, is_include=True):
-        """Process a list of search files with common code"""
-        if not file_paths:
-            return set()
+    # Step 1: Process metadata search files
+    if args.include_metadata_file:
+        log(f"Processing {len(args.include_metadata_file)} metadata search files", verbose_only=False, verbose=args.verbose)
+        for i, file_path in enumerate(args.include_metadata_file):
+            log(f"Processing metadata file [{i+1}/{len(args.include_metadata_file)}]: {file_path}", verbose_only=False, verbose=args.verbose)
             
-        result_ids = set()
-        for file_path in file_paths:
             query = load_json_file(file_path, args.verbose)
-            if query is not None:  # Check that file was loaded successfully
-                log(f"Executing {search_type} search from {file_path}", verbose_only=False, verbose=args.verbose)
-                assets = execute_search(args.server, args.key, query, search_type, verbose=args.verbose)
+            if not query:
+                log(f"Failed to load query from {file_path}", fg="red", verbose_only=False, verbose=args.verbose)
+                continue
                 
-                # Add assets to the global all_assets list
-                all_assets.extend(assets)
+            assets = execute_search(args.server, args.key, query, "metadata", verbose=args.verbose)
+            
+            if not assets:
+                log(f"No assets found for metadata search in {file_path}", fg="yellow", verbose_only=False, verbose=args.verbose)
+                continue
+                
+            # Store asset IDs for this search
+            asset_ids = {asset["id"] for asset in assets}
+            included_metadata_assets.append(asset_ids)
+            
+            # Add to all assets for filtering later
+            all_assets.extend(assets)
+            for asset in assets:
+                unique_assets[asset["id"]] = asset
+            
+            if len(included_metadata_assets) == 1:
+                log(f"Found {len(assets)} assets matching metadata criteria in {file_path}", 
+                    verbose_only=False, verbose=args.verbose)
+            else:
+                current_intersection = reduce(lambda x, y: x.intersection(y), included_metadata_assets)
+                log(f"Found {len(assets)} assets matching metadata criteria in {file_path} (intersection so far: {len(current_intersection)})", 
+                    verbose_only=False, verbose=args.verbose)
 
-                for asset in assets:
-                    unique_assets[asset["id"]] = asset
+    # Step 2: Process smart search files
+    if args.include_smart_file:
+        log(f"Processing {len(args.include_smart_file)} smart search files", verbose_only=False, verbose=args.verbose)
+        for i, file_path in enumerate(args.include_smart_file):
+            log(f"Processing smart file [{i+1}/{len(args.include_smart_file)}]: {file_path}", verbose_only=False, verbose=args.verbose)
+            
+            query = load_json_file(file_path, args.verbose)
+            if not query:
+                log(f"Failed to load query from {file_path}", fg="red", verbose_only=False, verbose=args.verbose)
+                continue
+                
+            assets = execute_search(args.server, args.key, query, "smart", verbose=args.verbose)
+            
+            if not assets:
+                log(f"No assets found for smart search in {file_path}", fg="yellow", verbose_only=False, verbose=args.verbose)
+                continue
+                
+            # Store asset IDs for this search
+            asset_ids = {asset["id"] for asset in assets}
+            included_smart_assets.append(asset_ids)
+            
+            # Add to all assets for filtering later
+            all_assets.extend(assets)
+            for asset in assets:
+                unique_assets[asset["id"]] = asset
+            
+            if len(included_smart_assets) == 1:
+                log(f"Found {len(assets)} assets matching smart criteria in {file_path}", 
+                    verbose_only=False, verbose=args.verbose)
+            else:
+                current_intersection = reduce(lambda x, y: x.intersection(y), included_smart_assets)
+                log(f"Found {len(assets)} assets matching smart criteria in {file_path} (intersection so far: {len(current_intersection)})", 
+                    verbose_only=False, verbose=args.verbose)
 
-                if is_include and assets:
-                    asset_ids = {asset["id"] for asset in assets}
-                    included_assets_by_search.append(asset_ids)
-                    
-                    # Calculate and show the impact on the final asset set
-                    if len(included_assets_by_search) == 1:
-                        current_set = asset_ids
-                    else:
-                        current_set = reduce(lambda x, y: x.intersection(y), included_assets_by_search)
-                    
-                    log(f"Found {len(assets)} assets matching {search_type} criteria in {file_path} (intersection now: {len(current_set)} assets)",
-                        verbose_only=False, verbose=args.verbose)
-                    
-                elif not is_include:
-                    result_ids.update({asset["id"] for asset in assets})
-        return result_ids
-
-    # Process include searches
-    process_search_files(args.include_metadata_file, "metadata")
-    process_search_files(args.include_smart_file, "smart")
-
-    # Step 2: Calculate intersection of all include searches
-    final_asset_ids = set()
-    if included_assets_by_search:
-        final_asset_ids = reduce(lambda x, y: x.intersection(y), included_assets_by_search)
-        log(f"Intersection of all include searches: {len(final_asset_ids)} assets",
-            verbose_only=False, verbose=args.verbose)
-
-    # Step 3: Execute exclude searches
-    original_count = len(final_asset_ids)
+    # Step 3: Calculate final intersection
+    # First, calculate intersection within each search type
+    metadata_result = set()
+    if included_metadata_assets:
+        metadata_result = reduce(lambda x, y: x.intersection(y), included_metadata_assets)
+        log(f"Metadata search intersection: {len(metadata_result)} assets", verbose_only=False, verbose=args.verbose)
     
-    # Track assets excluded by each file
+    smart_result = set()
+    if included_smart_assets:
+        smart_result = reduce(lambda x, y: x.intersection(y), included_smart_assets)
+        log(f"Smart search intersection: {len(smart_result)} assets", verbose_only=False, verbose=args.verbose)
+    
+    # Then, calculate intersection between search types if both are used
+    final_asset_ids = set()
+    if metadata_result and smart_result:
+        # Both search types used, take intersection
+        final_asset_ids = metadata_result.intersection(smart_result)
+        log(f"Intersection between metadata and smart searches: {len(final_asset_ids)} assets",
+            verbose_only=False, verbose=args.verbose)
+    elif metadata_result:
+        # Only metadata searches used
+        final_asset_ids = metadata_result
+    elif smart_result:
+        # Only smart searches used
+        final_asset_ids = smart_result
+    
+    # Step 4: Execute exclude searches
+    # Process exclude metadata files
     for file_path in args.exclude_metadata_file or []:
         query = load_json_file(file_path, args.verbose)
         if query is not None:
             log(f"Executing metadata exclusion search from {file_path}", verbose_only=False, verbose=args.verbose)
             assets = execute_search(args.server, args.key, query, "metadata", verbose=args.verbose)
-            
+
             all_assets.extend(assets)
-            
+
             excluded_ids = {asset["id"] for asset in assets}
             before_count = len(final_asset_ids)
             final_asset_ids -= excluded_ids
             excluded_count = before_count - len(final_asset_ids)
-            
+
             log(f"Found {len(assets)} assets matching metadata exclusion criteria in {file_path} (excluded {excluded_count}, remaining: {len(final_asset_ids)})",
                 verbose_only=False, verbose=args.verbose)
-            
+
             # Track for later use
             excluded_assets.update(excluded_ids)
-    
+
+    # Process exclude smart files
     for file_path in args.exclude_smart_file or []:
         query = load_json_file(file_path, args.verbose)
         if query is not None:
             log(f"Executing smart exclusion search from {file_path}", verbose_only=False, verbose=args.verbose)
             assets = execute_search(args.server, args.key, query, "smart", verbose=args.verbose)
-            
+
             all_assets.extend(assets)
-            
+
             excluded_ids = {asset["id"] for asset in assets}
             before_count = len(final_asset_ids)
             final_asset_ids -= excluded_ids
             excluded_count = before_count - len(final_asset_ids)
-            
+
             log(f"Found {len(assets)} assets matching smart exclusion criteria in {file_path} (excluded {excluded_count}, remaining: {len(final_asset_ids)})",
                 verbose_only=False, verbose=args.verbose)
-            
+
             # Track for later use
             excluded_assets.update(excluded_ids)
-
-    # Step 4: Remove excluded assets
-    if final_asset_ids:
-        final_asset_ids -= excluded_assets
-        log(f"After applying exclusion searches: {len(final_asset_ids)} assets remaining",
-            verbose_only=False, verbose=args.verbose)
 
     # Step 5: Parse and apply filters
     # First ensure unique_assets has all assets
