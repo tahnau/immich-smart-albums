@@ -282,17 +282,17 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging")
     parser.add_argument("--max-assets", type=int, help="Maximum number of assets to process", default=None)
     parser.add_argument("--include-metadata-file", nargs="+", type=str,
-                      help="Path to JSON file containing metadata search query (can specify multiple files)")
+                      help="Path to one or more JSON files containing metadata search queries (e.g., --include-metadata-file file1.json file2.json)")
     parser.add_argument("--include-smart-file", nargs="+", type=str,
-                      help="Path to JSON file containing smart search query (can specify multiple files)")
+                      help="Path to one or more JSON files containing smart search queries (e.g., --include-smart-file file1.json file2.json)")
     parser.add_argument("--exclude-metadata-file", nargs="+", type=str,
-                      help="Path to JSON file containing exclusion metadata search query (can specify multiple files)")
+                      help="Path to one or more JSON files containing exclusion metadata search queries (e.g., --exclude-metadata-file file1.json file2.json)")
     parser.add_argument("--exclude-smart-file", nargs="+", type=str,
-                      help="Path to JSON file containing exclusion smart search query (can specify multiple files)")
+                      help="Path to one or more JSON files containing exclusion smart search queries (e.g., --exclude-smart-file file1.json file2.json)")
     parser.add_argument("--include-local-filter-file", nargs="+", type=str,
-                      help="Path to JSON file containing local JSONPath and regex include filters (can specify multiple files)")
+                      help="Path to one or more JSON files containing local JSONPath and regex include filters (e.g., --include-local-filter-file file1.json file2.json)")
     parser.add_argument("--exclude-local-filter-file", nargs="+", type=str,
-                      help="Path to JSON file containing local JSONPath and regex exclude filters (can specify multiple files)")
+                      help="Path to one or more JSON files containing local JSONPath and regex exclude filters (e.g., --exclude-local-filter-file file1.json file2.json)")
 
     # Parse arguments
     args = parser.parse_args()
