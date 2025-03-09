@@ -1,0 +1,3 @@
+[
+  {"path": "$.people[*].name", "regex": "person1","description": "Photos containing person"}
+]

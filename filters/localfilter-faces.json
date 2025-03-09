@@ -1,0 +1,3 @@
+[
+  {"path": "$.people[0].faces", "regex": ".+","description": "Photos containing detected faces. TODO. search API response for person field is NULL"}
+]

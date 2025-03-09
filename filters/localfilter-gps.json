@@ -1,0 +1,4 @@
+[
+  {"path": "$.exifInfo.latitude", "regex": ".+", "description": "Photos with GPS coordinates"},
+  {"path": "$.exifInfo.longitude", "regex": ".+", "description": "Photos with GPS coordinates"}
+]

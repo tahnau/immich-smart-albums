@@ -1,0 +1,3 @@
+[
+  {"path": "$.exifInfo.city", "regex": "Helsinki", "description": "Photos taken in Helsinki"}
+]

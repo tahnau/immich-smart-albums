@@ -1,0 +1,3 @@
+[
+  {"path": "$.exifInfo.make", "regex": "Apple", "description": "Photos taken with any Apple device"}
+]

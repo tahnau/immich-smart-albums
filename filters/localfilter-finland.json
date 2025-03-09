@@ -1,0 +1,3 @@
+[
+  {"path": "$.exifInfo.country", "regex": "Finland", "description": "Photos taken in Finland"}
+]

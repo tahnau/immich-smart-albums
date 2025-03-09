@@ -1,0 +1,3 @@
+[
+  {"path": "$.originalPath", "regex": "^/images/2025-02","description": "Photos from February 2025 based on path"}
+]

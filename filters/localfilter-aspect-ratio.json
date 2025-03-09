@@ -1,0 +1,3 @@
+[
+  {"path": "$.exifInfo.exifImageWidth", "regex": "5712", "description": "Photos with 5712 resolution width"}
+]

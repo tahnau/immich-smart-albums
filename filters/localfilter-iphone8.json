@@ -1,0 +1,3 @@
+[
+  {"path": "$.originalPath", "regex": "^/trip/2014-11-18", "description": "Files from trip with path starting with /trip/2014-11-18" }
+]

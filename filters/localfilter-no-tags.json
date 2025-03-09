@@ -1,0 +1,3 @@
+[
+  {"path": "$.tags", "regex": "^\\[\\]$", "description": "Photos without any tags"}
+]
