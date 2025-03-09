@@ -464,6 +464,9 @@ def main():
     final_asset_ids = compute_merged(final_structure)
     log(f"Final merged asset IDs after applying all criteria: {len(final_asset_ids)} assets", verbose_only=False, verbose=args.verbose)
 
+    # import reprlib
+    # print(reprlib.repr(final_structure))
+
     #################################
     # Phase 5: Apply Limit and Finalize Output
     #################################
