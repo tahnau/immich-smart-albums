@@ -20,7 +20,7 @@ Immich Smart Albums automates photo organization by adding matching images to al
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/immich-smart-albums.git
+git clone https://github.com/tahnau/immich-smart-albums.git
 cd immich-smart-albums
 
 # Install dependencies
@@ -37,21 +37,37 @@ The script implements a powerful and flexible asset filtering system with suppor
 - **Smart Search**: Uses AI-powered search for content-based matches
 - **Local Filters**: Applies JSONPath and regex filters directly to asset data
 
-### Combination Modes
+### Filter Processing Overview
 
-Each search type supports two modes:
+Imagine three include categories: **metadata**, **smart**, and **local filters**. For each category, you can provide a list of rule files as arguments. When rule files are supplied:
 
-- **Union Mode**: Assets matching ANY of the queries are included (logical OR)
-- **Intersection Mode**: Only assets matching ALL queries are included (logical AND)
+- **Union:** An asset qualifies if it meets **at least one** rule in the list.
+- **Intersection:** An asset qualifies only if it meets **every** rule in the list.
 
-### Filter Processing Order
+These union/intersection operations are applied only when rule files are provided; if not, that category defaults to including all assets.
 
-Filters are applied in this sequence:
+### Merging Process
 
-1. **Include Searches**: First metadata searches, then smart searches
-2. **Exclude Searches**: Remove any excluded assets from the results
-3. **Local Filters**: Apply additional JSONPath/regex filtering
-4. **Asset Limit**: Apply any maximum asset limit
+1. **Final Include:**
+   - Each used category (metadata, smart, local) processes its rule files (if any) using union/intersection logic.
+   - The overall include set is the intersection of the category results:
+     
+     **Final Include = Metadata ∩ Smart ∩ Local**
+
+2. **Final Exclude:**
+   - Exclude arguments work similarly (accepting lists with union/intersection logic).
+   - The overall exclude set is the union of these results:
+     
+     **Final Exclude = Exclude Union ∪ Exclude Intersection**
+
+3. **Final Assets:**
+   - The final asset set is determined by subtracting the exclude set from the include set:
+     
+     **Final Assets = Final Include – Final Exclude**
+
+4. **Asset Limit:**
+   - If an asset limit is set, the final list is trimmed accordingly.
+
 
 ### Command-Line Parameters
 
@@ -83,29 +99,6 @@ Filters are applied in this sequence:
 --verbose                 Enable verbose output for debugging
 --max-assets              Maximum number of assets to process
 ```
-
-### Detailed Filtering Flow
-
-1. **Include Searches**:
-   - Execute metadata searches (both union and intersection)
-   - Execute smart searches (both union and intersection)
-   - For each type, calculate union and intersection results separately
-   - When both union and intersection modes are used for the same search type (e.g., both `--include-smart-union` and `--include-smart-intersection`), the script takes the intersection of these two result sets
-   - This means an asset must satisfy BOTH conditions: match at least one union query AND match all intersection queries
-   - Intersect results from metadata and smart searches if both exist
-
-2. **Exclude Searches**:
-   - Execute metadata and smart exclude searches in both modes
-   - Combine all excluded assets (union of all excludes)
-   - Remove excluded assets from include results
-
-3. **Local Filters**:
-   - Apply include local filters (union and intersection)
-   - Apply exclude local filters (union and intersection)
-   - Combine and apply to search results
-
-4. **Limit**:
-   - If `--max-assets` is specified, limit the result set
 
 ## Quick Start Examples
 
@@ -202,11 +195,11 @@ python immich-smart-albums.py --key YOUR_API_KEY --server https://immich.example
 ### Camera-Specific Albums using local filters
 
 ```bash
-# Photos taken with iPhone 15 Pro
+# Photos taken with Apple
 python3 immich-smart-albums.py \
   --include-metadata-union filters/all-photos.json \
-  --include-local-filter-intersection filters/iphone15pro.json \
-  --album iphone15-photos-album-id
+  --include-local-filter-intersection filters/localfilter-apple.json \
+  --album apple-photos-album-id
 ```
 
 ## Configuration
@@ -262,16 +255,15 @@ Local filters use JSONPath and regex to filter assets based on specific criteria
 
 In union mode, assets matching ANY filter are included. In intersection mode, assets must match ALL filters.
 
-### Use Case: Camera model and file path filtering
+### Use Case: Apple photos taken in Finland
 ```bash
-# iphone8.json
-[
-  {"path": "$.exifInfo.make", "regex": "Apple"},
-  {"path": "$.exifInfo.model", "regex": "iPhone 8"},
-  {"path": "$.originalPath", "regex": "^/trip/2014-11-18", "description": "Files from trip with path starting with /trip/2014-11-18" } 
-]
+# filters/localfilter-apple.json
+[ {"path": "$.exifInfo.make", "regex": "Apple", "description": "Photos taken with any Apple device"} ]
 
-python3 immich-smart-albums.py --include-metadata-union all-images.json --include-local-filter-intersection filters/iphone8.json --album iphone8-photos
+$ filters/localfilter-finland.json
+[{"path": "$.exifInfo.country", "regex": "Finland", "description": "Photos taken in Finland"}]
+
+python3 immich-smart-albums.py --include-metadata-union all-images.json --include-local-filter-intersection filters/localfilter-apple.json filters/localfilter-finland.json --album iphone-in-finland
 ```
 
 ## Performance Tips
@@ -285,10 +277,10 @@ python3 immich-smart-albums.py --include-metadata-union all-images.json --includ
 
 ### Date range albums
 ```bash
-# summer-2023.json
-{"takenAfter": "2023-06-01T00:00:00.000Z", "takenBefore": "2023-08-31T23:59:59.999Z"}
+# 2023-Q1-memories
+{ "takenAfter": "2023-01-01T00:00:00.000Z", "takenBefore": "2023-03-31T23:59:59.999Z" }
 
-python3 immich-smart-albums.py --include-metadata-union filters/summer-2023.json --album summer-memories
+python3 immich-smart-albums.py --include-metadata-union filters/metadata-2023-Q1.json --album 2023-Q1-memories
 ```
 
 ### People together in Helsinki during specific period
@@ -322,90 +314,59 @@ Originally created for a family setup with separate Immich accounts:
 The following fields are available for local JSONPath and regex filters:
 ```json
 {
-    "id": "1c71303d-9f8c-4cd3-bd27-1198a3b0cdb9",
-    "deviceAssetId": "20250223_145925.JPG",
-    "ownerId": "6f9cf9e4-c538-40c4-b18f-9663576679d5",
-    "owner": {
-        "id": "6f9cf9e4-c538-40c4-b18f-9663576679d5",
-        "email": "person",
-        "name": "person",
-        "profileImagePath": "upload/profile/6f9cf9e4-c538-40c4-b18f-9663576679d5/99be9f8c-55d2-4dbe-8e55-f9499c316ca2.png",
-        "avatarColor": "pink",
-        "profileChangedAt": "2024-12-04T19:12:07.477+00:00"
-    },
-    "deviceId": "Library Import",
-    "libraryId": "f01b0af6-14e9-4dc0-9e78-4e6fb9181bae",
-    "type": "IMAGE",
-    "originalPath": "/images/2025-02/20250223_145925.JPG",
-    "originalFileName": "20250223_145925.JPG",
-    "originalMimeType": "image/jpeg",
-    "thumbhash": "khgKFQJfVKBYlnaYhXiIh6egqQup",
-    "fileCreatedAt": "2025-02-23T12:59:25.861Z",
-    "fileModifiedAt": "2025-02-23T12:59:25.000Z",
-    "localDateTime": "2025-02-23T14:59:25.861Z",
-    "updatedAt": "2025-02-26T00:00:41.736Z",
-    "isFavorite": false,
-    "isArchived": false,
-    "isTrashed": false,
-    "duration": "0:00:00.00000",
-    "exifInfo": {
-        "make": "Apple",
-        "model": "iPhone 15 Pro",
-        "exifImageWidth": 5712,
-        "exifImageHeight": 4284,
-        "fileSizeInByte": 4301831,
-        "orientation": "6",
-        "dateTimeOriginal": "2025-02-23T12:59:25.861+00:00",
-        "modifyDate": "2025-02-23T12:59:25+00:00",
-        "timeZone": "UTC+2",
-        "lensModel": "iPhone 14 Pro back triple camera 6.765mm f/1.78",
-        "fNumber": 1.8,
-        "focalLength": 6.764999866,
-        "iso": 800,
-        "exposureTime": "1/60",
-        "latitude": 60.20000000000,
-        "longitude": 24.20000000000,
-        "city": "Helsinki",
-        "state": "Uusimaa",
-        "country": "Finland",
-        "description": "",
-        "projectionType": null,
-        "rating": null
-    },
-    "livePhotoVideoId": null,
-    "tags": [],
-    "people": [
-        {
-            "id": "60e5f100-ef96-42e9-9cc7-cc865c0639d6",
-            "name": "person1",
-            "birthDate": null,
-            "thumbnailPath": "upload/thumbs/6f9cf9e4-c538-40c4-b18f-9663576679d5/60/e5/60e5f100-ef96-42e9-9cc7-cc865c0639d6.jpeg",
-            "isHidden": false,
-            "isFavorite": false,
-            "updatedAt": "2024-12-04T16:42:47.144284+00:00",
-            "faces": [
-                {
-                    "id": "8c24eccc-a59b-4e9f-9a0f-6c46b98b8155",
-                    "imageHeight": 1920,
-                    "imageWidth": 1440,
-                    "boundingBoxX1": 250,
-                    "boundingBoxX2": 580,
-                    "boundingBoxY1": 364,
-                    "boundingBoxY2": 785,
-                    "sourceType": "machine-learning"
-                }
-            ]
-        }
-    ],
-    "unassignedFaces": [],
-    "checksum": "VPBFOP4sPPMUluPEts71v6wP+nM=",
-    "stack": null,
-    "isOffline": false,
-    "hasMetadata": true,
-    "duplicateId": null,
-    "resized": true
-}
+                "id": "53c77aa3-52ff-4819-8900-d7bf0b134752",
+                "deviceAssetId": "20250228_161739.JPG",
+                "ownerId": "6f9cf9e4-c538-40c4-b18f-9663576679d5",
+                "deviceId": "Library Import",
+                "libraryId": "f01b0af6-14e9-4dc0-9e78-4e6fb9181bae",
+                "type": "IMAGE",
+                "originalPath": "/niitty/2025-02/20250228_161739.JPG",
+                "originalFileName": "20250228_161739.JPG",
+                "originalMimeType": "image/jpeg",
+                "thumbhash": "3ygGDYI7hZacoIUuZ9dJiT1uoLoH",
+                "fileCreatedAt": "2025-02-28T14:17:39.402Z",
+                "fileModifiedAt": "2025-02-28T14:17:39.000Z",
+                "localDateTime": "2025-02-28T16:17:39.402Z",
+                "updatedAt": "2025-03-03T00:00:32.609Z",
+                "isFavorite": false,
+                "isArchived": false,
+                "isTrashed": false,
+                "duration": "0:00:00.00000",
+                "exifInfo": {
+                    "make": "Apple",
+                    "model": "iPhone 15 Pro",
+                    "exifImageWidth": 4032,
+                    "exifImageHeight": 3024,
+                    "fileSizeInByte": 1695013,
+                    "orientation": "1",
+                    "dateTimeOriginal": "2025-02-28T14:17:39.402+00:00",
+                    "modifyDate": "2025-02-28T14:17:39+00:00",
+                    "timeZone": "UTC+2",
+                    "lensModel": "iPhone 15 Pro back triple camera 2.22mm f/2.2",
+                    "fNumber": 2.2,
+                    "focalLength": 2.220000029,
+                    "iso": 1600,
+                    "exposureTime": "1/34",
+                    "latitude": 60.1000000,
+                    "longitude": 24.100000000,
+                    "city": "Helsinki",
+                    "state": "Uusimaa",
+                    "country": "Finland",
+                    "description": "",
+                    "projectionType": null,
+                    "rating": null
+                },
+                "livePhotoVideoId": null,
+                "people": [],
+                "checksum": "mSPNjmXBvLCD6ukNAvUa0XAw+cg=",
+                "isOffline": false,
+                "hasMetadata": true,
+                "duplicateId": null,
+                "resized": true
+            }
+        ],
 ```
+Note that the people field is always empty and cannot be used. The Immich search API does not bother to return all image details without loading the image separately.
 
 ## Automation
 
