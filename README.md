@@ -37,21 +37,37 @@ The script implements a powerful and flexible asset filtering system with suppor
 - **Smart Search**: Uses AI-powered search for content-based matches
 - **Local Filters**: Applies JSONPath and regex filters directly to asset data
 
-### Combination Modes
+### Filter Processing Overview
 
-Each search type supports two modes:
+Imagine three include categories: **metadata**, **smart**, and **local filters**. For each category, you can provide a list of rule files as arguments. When rule files are supplied:
 
-- **Union Mode**: Assets matching ANY of the queries are included (logical OR)
-- **Intersection Mode**: Only assets matching ALL queries are included (logical AND)
+- **Union:** An asset qualifies if it meets **at least one** rule in the list.
+- **Intersection:** An asset qualifies only if it meets **every** rule in the list.
 
-### Filter Processing Order
+These union/intersection operations are applied only when rule files are provided; if not, that category defaults to including all assets.
 
-Filters are applied in this sequence:
+### Merging Process
 
-1. **Include Searches**: First metadata searches, then smart searches
-2. **Exclude Searches**: Remove any excluded assets from the results
-3. **Local Filters**: Apply additional JSONPath/regex filtering
-4. **Asset Limit**: Apply any maximum asset limit
+1. **Final Include:**
+   - Each used category (metadata, smart, local) processes its rule files (if any) using union/intersection logic.
+   - The overall include set is the intersection of the category results:
+     
+     **Final Include = Metadata ∩ Smart ∩ Local**
+
+2. **Final Exclude:**
+   - Exclude arguments work similarly (accepting lists with union/intersection logic).
+   - The overall exclude set is the union of these results:
+     
+     **Final Exclude = Exclude Union ∪ Exclude Intersection**
+
+3. **Final Assets:**
+   - The final asset set is determined by subtracting the exclude set from the include set:
+     
+     **Final Assets = Final Include – Final Exclude**
+
+4. **Asset Limit:**
+   - If an asset limit is set, the final list is trimmed accordingly.
+
 
 ### Command-Line Parameters
 
@@ -83,29 +99,6 @@ Filters are applied in this sequence:
 --verbose                 Enable verbose output for debugging
 --max-assets              Maximum number of assets to process
 ```
-
-### Detailed Filtering Flow
-
-1. **Include Searches**:
-   - Execute metadata searches (both union and intersection)
-   - Execute smart searches (both union and intersection)
-   - For each type, calculate union and intersection results separately
-   - When both union and intersection modes are used for the same search type (e.g., both `--include-smart-union` and `--include-smart-intersection`), the script takes the intersection of these two result sets
-   - This means an asset must satisfy BOTH conditions: match at least one union query AND match all intersection queries
-   - Intersect results from metadata and smart searches if both exist
-
-2. **Exclude Searches**:
-   - Execute metadata and smart exclude searches in both modes
-   - Combine all excluded assets (union of all excludes)
-   - Remove excluded assets from include results
-
-3. **Local Filters**:
-   - Apply include local filters (union and intersection)
-   - Apply exclude local filters (union and intersection)
-   - Combine and apply to search results
-
-4. **Limit**:
-   - If `--max-assets` is specified, limit the result set
 
 ## Quick Start Examples
 
@@ -267,7 +260,7 @@ In union mode, assets matching ANY filter are included. In intersection mode, as
 # filters/localfilter-apple.json
 [ {"path": "$.exifInfo.make", "regex": "Apple", "description": "Photos taken with any Apple device"} ]
 
-$ cat filters/localfilter-finland.json
+$ filters/localfilter-finland.json
 [{"path": "$.exifInfo.country", "regex": "Finland", "description": "Photos taken in Finland"}]
 
 python3 immich-smart-albums.py --include-metadata-union all-images.json --include-local-filter-intersection filters/localfilter-apple.json filters/localfilter-finland.json --album iphone-in-finland
