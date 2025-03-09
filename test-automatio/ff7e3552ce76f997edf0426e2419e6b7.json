@@ -1,0 +1,16 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/2023-Q1.json --include-metadata-intersection filters/2024-Q1.json --include-smart-union filters/smart-vehicles.json --include-smart-intersection filters/smart-nsfw-1.json | sort",
+    "timestamp": "2025-03-09T16:59:22.812580",
+    "output": "\nCombined metadata search result (union \u2229 intersection): 0 assets\nCombined smart search result (union \u2229 intersection): 1 assets\nFinal assets selected: 1\nFound 1334 assets matching metadata criteria in filters/2024-Q1.json\nFound 300 assets matching smart criteria in filters/smart-nsfw-1.json\nFound 300 assets matching smart criteria in filters/smart-vehicles.json\nFound 621 assets matching metadata criteria in filters/2023-Q1.json\nhttp://127.0.0.1:2283/photos/f6c18bda-417b-4cd4-8a42-52eaf4ed540c\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 1 metadata search files\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: filters/2023-Q1.json\nProcessing metadata file [1/1]: filters/2024-Q1.json\nProcessing smart file [1/1]: filters/smart-nsfw-1.json\nProcessing smart file [1/1]: filters/smart-vehicles.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/2023-Q1.json --include-metadata-intersection filters/2024-Q1.json --include-smart-union filters/smart-vehicles.json --include-smart-intersection filters/smart-nsfw-1.json | sort",
+    "timestamp": "2025-03-09T17:01:18.222131",
+    "output": "\nCombined metadata search result (union \u2229 intersection): 0 assets\nCombined smart search result (union \u2229 intersection): 1 assets\nFinal assets selected: 1\nFound 1334 assets matching metadata criteria in filters/2024-Q1.json\nFound 300 assets matching smart criteria in filters/smart-nsfw-1.json\nFound 300 assets matching smart criteria in filters/smart-vehicles.json\nFound 621 assets matching metadata criteria in filters/2023-Q1.json\nhttp://127.0.0.1:2283/photos/f6c18bda-417b-4cd4-8a42-52eaf4ed540c\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 1 metadata search files\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: filters/2023-Q1.json\nProcessing metadata file [1/1]: filters/2024-Q1.json\nProcessing smart file [1/1]: filters/smart-nsfw-1.json\nProcessing smart file [1/1]: filters/smart-vehicles.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

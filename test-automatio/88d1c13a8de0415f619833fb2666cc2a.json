@@ -1,0 +1,16 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/year-2024.json --include-local-filter-union filters/localfilter-originalpath.json | sort",
+    "timestamp": "2025-03-09T16:38:58.731032",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\nFound 5964 assets matching metadata criteria in filters/year-2024.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 5964 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/year-2024.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/year-2024.json --include-local-filter-union filters/localfilter-originalpath.json | sort",
+    "timestamp": "2025-03-09T16:46:47.510810",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\nFound 5964 assets matching metadata criteria in filters/year-2024.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 5964 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/year-2024.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

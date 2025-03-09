@@ -1,0 +1,32 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-2024-Q2.json --include-local-filter-union filters/localfilter-originalpath.json | sort",
+    "timestamp": "2025-03-09T17:15:35.352271",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/metadata-2024-Q2.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 1297 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/metadata-2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-2024-Q2.json --include-local-filter-union filters/localfilter-originalpath.json | sort",
+    "timestamp": "2025-03-09T17:26:13.097235",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/metadata-2024-Q2.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 1297 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/metadata-2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-2024-Q2.json --include-local-filter-union filters/localfilter-originalpath.json | sort",
+    "timestamp": "2025-03-09T17:30:54.113629",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/metadata-2024-Q2.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 1297 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/metadata-2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-2024-Q2.json --include-local-filter-union filters/localfilter-originalpath.json | sort",
+    "timestamp": "2025-03-09T21:36:47.805453",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\nFinal merged asset IDs after applying all criteria: 0 assets\n        [MERGE - LEAF] Entering leaf node with mode 'intersection'. Query keys: ['local']\n        [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['filters/metadata-2024-Q2.json']\n        [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['none']\n        [MERGE - LEAF] Intersection result: 0 items\n        [MERGE - LEAF] Raw query counts: {'filters/metadata-2024-Q2.json': 1297}\n        [MERGE - LEAF] Raw query counts: {'local': 0}\n        [MERGE - LEAF] Raw query counts: {'none': 0}\n        [MERGE - LEAF] Union result: 0 items\n        [MERGE - LEAF] Union result: 1297 items\n    [MERGE - NODE] About to merge children with counts: [0]\n[MERGE - NODE] About to merge children with counts: [0, 0]\n    [MERGE - NODE] About to merge children with counts: [1297, 0]\n    [MERGE - NODE] Entering node with mode 'intersection' having 2 children\n[MERGE - NODE] Entering node with mode 'minus' having 2 children\n    [MERGE - NODE] Entering node with mode 'union' having 1 children\n    [MERGE - NODE] Intersection result: 0 items\n[MERGE - NODE] Minus (Subtract) result: 0 items\n    [MERGE - NODE] Union result: 0 items\n",
+    "return_code": 0,
+    "status": "FAILED",
+    "diff": "--- previous\n+++ current\n@@ -1,10 +1,21 @@\n \u001b[93mNo assets matched all criteria.\u001b[0m\n Filter 'Files from trip with path starting with /trip/2014-11-18' (include, union mode) matched 0 assets\n-Found 1297 assets matching metadata criteria in filters/metadata-2024-Q2.json\n-Loaded 0 exclude intersection filters\n-Loaded 0 exclude union filters\n-Loaded 0 include intersection filters\n-Loaded 1 include union filters\n-Metadata search union result: 1297 assets\n-Processing 1 metadata search files\n-Processing metadata file [1/1]: filters/metadata-2024-Q2.json\n+Final merged asset IDs after applying all criteria: 0 assets\n+        [MERGE - LEAF] Entering leaf node with mode 'intersection'. Query keys: ['local']\n+        [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['filters/metadata-2024-Q2.json']\n+        [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['none']\n+        [MERGE - LEAF] Intersection result: 0 items\n+        [MERGE - LEAF] Raw query counts: {'filters/metadata-2024-Q2.json': 1297}\n+        [MERGE - LEAF] Raw query counts: {'local': 0}\n+        [MERGE - LEAF] Raw query counts: {'none': 0}\n+        [MERGE - LEAF] Union result: 0 items\n+        [MERGE - LEAF] Union result: 1297 items\n+    [MERGE - NODE] About to merge children with counts: [0]\n+[MERGE - NODE] About to merge children with counts: [0, 0]\n+    [MERGE - NODE] About to merge children with counts: [1297, 0]\n+    [MERGE - NODE] Entering node with mode 'intersection' having 2 children\n+[MERGE - NODE] Entering node with mode 'minus' having 2 children\n+    [MERGE - NODE] Entering node with mode 'union' having 1 children\n+    [MERGE - NODE] Intersection result: 0 items\n+[MERGE - NODE] Minus (Subtract) result: 0 items\n+    [MERGE - NODE] Union result: 0 items",
+    "suspicious": true
+  }
+]

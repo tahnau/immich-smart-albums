@@ -1,0 +1,32 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-intersection filters/metadata-2023-Q1.json filters/metadata-2024-Q1.json | sort",
+    "timestamp": "2025-03-09T17:16:13.237708",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFound 1334 assets matching metadata criteria in filters/metadata-2024-Q1.json\nFound 621 assets matching metadata criteria in filters/metadata-2023-Q1.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/metadata-2023-Q1.json\nProcessing metadata file [2/2]: filters/metadata-2024-Q1.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-intersection filters/metadata-2023-Q1.json filters/metadata-2024-Q1.json | sort",
+    "timestamp": "2025-03-09T17:27:03.416443",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFound 1334 assets matching metadata criteria in filters/metadata-2024-Q1.json\nFound 621 assets matching metadata criteria in filters/metadata-2023-Q1.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/metadata-2023-Q1.json\nProcessing metadata file [2/2]: filters/metadata-2024-Q1.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-intersection filters/metadata-2023-Q1.json filters/metadata-2024-Q1.json | sort",
+    "timestamp": "2025-03-09T17:31:43.928468",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFound 1334 assets matching metadata criteria in filters/metadata-2024-Q1.json\nFound 621 assets matching metadata criteria in filters/metadata-2023-Q1.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/metadata-2023-Q1.json\nProcessing metadata file [2/2]: filters/metadata-2024-Q1.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-intersection filters/metadata-2023-Q1.json filters/metadata-2024-Q1.json | sort",
+    "timestamp": "2025-03-09T21:39:08.452673",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFinal merged asset IDs after applying all criteria: 0 assets\n            [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['filters/metadata-2023-Q1.json']\n            [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['filters/metadata-2024-Q1.json']\n        [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['none']\n            [MERGE - LEAF] Raw query counts: {'filters/metadata-2023-Q1.json': 621}\n            [MERGE - LEAF] Raw query counts: {'filters/metadata-2024-Q1.json': 1334}\n        [MERGE - LEAF] Raw query counts: {'none': 0}\n        [MERGE - LEAF] Union result: 0 items\n            [MERGE - LEAF] Union result: 1334 items\n            [MERGE - LEAF] Union result: 621 items\n    [MERGE - NODE] About to merge children with counts: [0]\n    [MERGE - NODE] About to merge children with counts: [0]\n[MERGE - NODE] About to merge children with counts: [0, 0]\n        [MERGE - NODE] About to merge children with counts: [621, 1334]\n    [MERGE - NODE] Entering node with mode 'intersection' having 1 children\n        [MERGE - NODE] Entering node with mode 'intersection' having 2 children\n[MERGE - NODE] Entering node with mode 'minus' having 2 children\n    [MERGE - NODE] Entering node with mode 'union' having 1 children\n        [MERGE - NODE] Intersection result: 0 items\n    [MERGE - NODE] Intersection result: 0 items\n[MERGE - NODE] Minus (Subtract) result: 0 items\n    [MERGE - NODE] Union result: 0 items\n",
+    "return_code": 0,
+    "status": "FAILED",
+    "diff": "--- previous\n+++ current\n@@ -1,10 +1,23 @@\n \u001b[93mNo assets matched all criteria.\u001b[0m\n-Found 1334 assets matching metadata criteria in filters/metadata-2024-Q1.json\n-Found 621 assets matching metadata criteria in filters/metadata-2023-Q1.json\n-Loaded 0 exclude intersection filters\n-Loaded 0 exclude union filters\n-Loaded 0 include intersection filters\n-Loaded 0 include union filters\n-Processing 2 metadata search files\n-Processing metadata file [1/2]: filters/metadata-2023-Q1.json\n-Processing metadata file [2/2]: filters/metadata-2024-Q1.json\n+Final merged asset IDs after applying all criteria: 0 assets\n+            [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['filters/metadata-2023-Q1.json']\n+            [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['filters/metadata-2024-Q1.json']\n+        [MERGE - LEAF] Entering leaf node with mode 'union'. Query keys: ['none']\n+            [MERGE - LEAF] Raw query counts: {'filters/metadata-2023-Q1.json': 621}\n+            [MERGE - LEAF] Raw query counts: {'filters/metadata-2024-Q1.json': 1334}\n+        [MERGE - LEAF] Raw query counts: {'none': 0}\n+        [MERGE - LEAF] Union result: 0 items\n+            [MERGE - LEAF] Union result: 1334 items\n+            [MERGE - LEAF] Union result: 621 items\n+    [MERGE - NODE] About to merge children with counts: [0]\n+    [MERGE - NODE] About to merge children with counts: [0]\n+[MERGE - NODE] About to merge children with counts: [0, 0]\n+        [MERGE - NODE] About to merge children with counts: [621, 1334]\n+    [MERGE - NODE] Entering node with mode 'intersection' having 1 children\n+        [MERGE - NODE] Entering node with mode 'intersection' having 2 children\n+[MERGE - NODE] Entering node with mode 'minus' having 2 children\n+    [MERGE - NODE] Entering node with mode 'union' having 1 children\n+        [MERGE - NODE] Intersection result: 0 items\n+    [MERGE - NODE] Intersection result: 0 items\n+[MERGE - NODE] Minus (Subtract) result: 0 items\n+    [MERGE - NODE] Union result: 0 items",
+    "suspicious": true
+  }
+]

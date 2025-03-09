@@ -1,0 +1,16 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/2024-Q1.json filters/2024-Q2.json --include-local-filter-union '[{\"path\":\"$.exifInfo.city\",\"regex\":\"Helsinki\"}]' | sort",
+    "timestamp": "2025-03-09T16:58:53.287354",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.exifInfo.city:Helsinki' (include, union mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/2024-Q2.json\nFound 1334 assets matching metadata criteria in filters/2024-Q1.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 2631 assets\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/2024-Q1.json\nProcessing metadata file [2/2]: filters/2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/2024-Q1.json filters/2024-Q2.json --include-local-filter-union '[{\"path\":\"$.exifInfo.city\",\"regex\":\"Helsinki\"}]' | sort",
+    "timestamp": "2025-03-09T17:00:48.509260",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.exifInfo.city:Helsinki' (include, union mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/2024-Q2.json\nFound 1334 assets matching metadata criteria in filters/2024-Q1.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 2631 assets\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/2024-Q1.json\nProcessing metadata file [2/2]: filters/2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

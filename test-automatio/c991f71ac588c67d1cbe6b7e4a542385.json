@@ -1,0 +1,37 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union '{\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}' --include-smart-intersection '{\"query\":\"beach\", \"resultLimit\":100}' --include-local-filter-union '$.tags.name:vacation' | sort",
+    "timestamp": "2025-03-09T16:40:56.141599",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.tags.name:vacation' (include, union mode) matched 0 assets\nFound 100 assets matching smart criteria in {\"query\":\"beach\", \"resultLimit\":100}\nFound 10801 assets matching metadata criteria in {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nIntersection between metadata and smart searches: 5 assets\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 10801 assets\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nProcessing smart file [1/1]: {\"query\":\"beach\", \"resultLimit\":100}\nSmart search intersection result: 100 assets\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union '{\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}' --include-smart-intersection '{\"query\":\"beach\", \"resultLimit\":100}' --include-local-filter-union '$.tags.name:vacation' | sort",
+    "timestamp": "2025-03-09T16:58:24.799185",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.tags.name:vacation' (include, union mode) matched 0 assets\nFound 100 assets matching smart criteria in {\"query\":\"beach\", \"resultLimit\":100}\nFound 10801 assets matching metadata criteria in {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nIntersection between metadata and smart searches: 5 assets\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 10801 assets\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nProcessing smart file [1/1]: {\"query\":\"beach\", \"resultLimit\":100}\nSmart search intersection result: 100 assets\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union '{\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}' --include-smart-intersection '{\"query\":\"beach\", \"resultLimit\":100}' --include-local-filter-union '$.tags.name:vacation' | sort",
+    "timestamp": "2025-03-09T17:00:19.678911",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.tags.name:vacation' (include, union mode) matched 0 assets\nFound 100 assets matching smart criteria in {\"query\":\"beach\", \"resultLimit\":100}\nFound 10801 assets matching metadata criteria in {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nIntersection between metadata and smart searches: 5 assets\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 10801 assets\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nProcessing smart file [1/1]: {\"query\":\"beach\", \"resultLimit\":100}\nSmart search intersection result: 100 assets\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union '{\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}' --include-smart-intersection '{\"query\":\"beach\", \"resultLimit\":100}' --include-local-filter-union '$.tags.name:vacation' | sort",
+    "timestamp": "2025-03-09T17:03:13.156288",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.tags.name:vacation' (include, union mode) matched 0 assets\nFound 100 assets matching smart criteria in {\"query\":\"beach\", \"resultLimit\":100}\nFound 10801 assets matching metadata criteria in {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nIntersection between metadata and smart searches: 5 assets\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 10801 assets\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nProcessing smart file [1/1]: {\"query\":\"beach\", \"resultLimit\":100}\nSmart search intersection result: 100 assets\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union '{\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}' --include-smart-intersection '{\"query\":\"beach\", \"resultLimit\":100}' --include-local-filter-union '$.tags.name:vacation' | sort",
+    "timestamp": "2025-03-09T17:15:56.924580",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.tags.name:vacation' (include, union mode) matched 0 assets\nFound 100 assets matching smart criteria in {\"query\":\"beach\", \"resultLimit\":100}\nFound 10801 assets matching metadata criteria in {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nIntersection between metadata and smart searches: 5 assets\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nMetadata search union result: 10801 assets\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: {\"takenAfter\":\"2023-01-01T00:00:00.000Z\"}\nProcessing smart file [1/1]: {\"query\":\"beach\", \"resultLimit\":100}\nSmart search intersection result: 100 assets\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

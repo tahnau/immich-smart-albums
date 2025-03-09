@@ -1,0 +1,9 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-2023-Q2.json --include-local-filter-union '$.exif.make:Canon' '$.exif.model:EOS' | sort",
+    "timestamp": "2025-03-09T17:15:51.495532",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.exif.make:Canon' (include, union mode) matched 0 assets\nFilter '$.exif.model:EOS' (include, union mode) matched 0 assets\nFound 855 assets matching metadata criteria in filters/metadata-2023-Q2.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 2 include union filters\nMetadata search union result: 855 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/metadata-2023-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/2023-Q2.json filters/2024-Q2.json --exclude-local-filter-union '[{\"path\":\"$.exifInfo.make\",\"regex\":\"iPhone\"}]' --include-local-filter-intersection '[{\"path\":\"$.tags.name\",\"regex\":\"vacation\"}]' | sort",
+    "timestamp": "2025-03-09T16:59:16.412626",
+    "output": "\u001b[93mInclude filter intersection returned 0 assets - final result must be empty\u001b[0m\n\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.exifInfo.make:iPhone' (exclude, union mode) matched 0 assets\nFilter '$.tags.name:vacation' (include, intersection mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/2024-Q2.json\nFound 855 assets matching metadata criteria in filters/2023-Q2.json\nLoaded 0 exclude intersection filters\nLoaded 0 include union filters\nLoaded 1 exclude union filters\nLoaded 1 include intersection filters\nMetadata search union result: 2152 assets\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/2023-Q2.json\nProcessing metadata file [2/2]: filters/2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/2023-Q2.json filters/2024-Q2.json --exclude-local-filter-union '[{\"path\":\"$.exifInfo.make\",\"regex\":\"iPhone\"}]' --include-local-filter-intersection '[{\"path\":\"$.tags.name\",\"regex\":\"vacation\"}]' | sort",
+    "timestamp": "2025-03-09T17:01:11.753654",
+    "output": "\u001b[93mInclude filter intersection returned 0 assets - final result must be empty\u001b[0m\n\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.exifInfo.make:iPhone' (exclude, union mode) matched 0 assets\nFilter '$.tags.name:vacation' (include, intersection mode) matched 0 assets\nFound 1297 assets matching metadata criteria in filters/2024-Q2.json\nFound 855 assets matching metadata criteria in filters/2023-Q2.json\nLoaded 0 exclude intersection filters\nLoaded 0 include union filters\nLoaded 1 exclude union filters\nLoaded 1 include intersection filters\nMetadata search union result: 2152 assets\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/2023-Q2.json\nProcessing metadata file [2/2]: filters/2024-Q2.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

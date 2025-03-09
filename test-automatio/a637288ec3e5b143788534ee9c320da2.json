@@ -1,0 +1,9 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-favorites.json --include-metadata-intersection filters/metadata-2023-Q3.json --include-smart-union filters/smart-vehicles.json --include-local-filter-union '$.originalPath:^/vacation' | sort",
+    "timestamp": "2025-03-09T17:16:10.741196",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nCombined metadata search result (union \u2229 intersection): 0 assets\nFilter '$.originalPath:^/vacation' (include, union mode) matched 0 assets\nFound 2028 assets matching metadata criteria in filters/metadata-2023-Q3.json\nFound 300 assets matching smart criteria in filters/smart-vehicles.json\nFound 48 assets matching metadata criteria in filters/metadata-favorites.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 1 include union filters\nProcessing 1 metadata search files\nProcessing 1 metadata search files\nProcessing 1 smart search files\nProcessing metadata file [1/1]: filters/metadata-2023-Q3.json\nProcessing metadata file [1/1]: filters/metadata-favorites.json\nProcessing smart file [1/1]: filters/smart-vehicles.json\nSmart search union result: 300 assets\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-intersection filters/2023-Q3.json filters/2023-Q4.json | sort",
+    "timestamp": "2025-03-09T16:58:39.140834",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFound 2028 assets matching metadata criteria in filters/2023-Q3.json\nFound 590 assets matching metadata criteria in filters/2023-Q4.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/2023-Q3.json\nProcessing metadata file [2/2]: filters/2023-Q4.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  },
+  {
+    "command": "python3 immich-smart-albums.py --include-metadata-intersection filters/2023-Q3.json filters/2023-Q4.json | sort",
+    "timestamp": "2025-03-09T17:00:34.126636",
+    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFound 2028 assets matching metadata criteria in filters/2023-Q3.json\nFound 590 assets matching metadata criteria in filters/2023-Q4.json\nLoaded 0 exclude intersection filters\nLoaded 0 exclude union filters\nLoaded 0 include intersection filters\nLoaded 0 include union filters\nProcessing 2 metadata search files\nProcessing metadata file [1/2]: filters/2023-Q3.json\nProcessing metadata file [2/2]: filters/2023-Q4.json\n",
+    "return_code": 0,
+    "status": "PASSED"
+  }
+]
