@@ -1,9 +1,0 @@
-[
-  {
-    "command": "python3 immich-smart-albums.py --include-smart-intersection filters/smart-nsfw-1.json filters/smart-nsfw-2.json 50 | sort",
-    "timestamp": "2025-03-09T16:39:49.552608",
-    "output": "Found 300 assets matching smart criteria in filters/smart-nsfw-1.json\nFound 300 assets matching smart criteria in filters/smart-nsfw-2.json\nProcessing 3 smart search files\nProcessing smart file [1/3]: filters/smart-nsfw-1.json\nProcessing smart file [2/3]: filters/smart-nsfw-2.json\nProcessing smart file [3/3]: 50\nTraceback (most recent call last):\n  File \"/media/halko/kuvat/000_EXECUTE/immich-smart-albums/immich-smart-albums.py\", line 693, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/media/halko/kuvat/000_EXECUTE/immich-smart-albums/immich-smart-albums.py\", line 451, in main\n    smart_intersection_assets, smart_intersection_sets = execute_search_queries(\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/media/halko/kuvat/000_EXECUTE/immich-smart-albums/immich-smart-albums.py\", line 291, in execute_search_queries\n    assets = execute_search(server_url, api_key, query, search_type, verbose=verbose)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/media/halko/kuvat/000_EXECUTE/immich-smart-albums/immich-smart-albums.py\", line 86, in execute_search\n    if query and \"resultLimit\" in query:\n                 ^^^^^^^^^^^^^^^^^^^^^^\nTypeError: argument of type 'int' is not iterable\n",
-    "return_code": 0,
-    "status": "PASSED"
-  }
-]

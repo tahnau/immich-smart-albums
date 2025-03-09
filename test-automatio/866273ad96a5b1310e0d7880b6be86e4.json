@@ -1,9 +1,0 @@
-[
-  {
-    "command": "python3 immich-smart-albums.py --include-metadata-union filters/year-2024.json --include-smart-intersection filters/smart-nsfw-4.json --include-smart-intersection filters/smart-nsfw-5.json | sort",
-    "timestamp": "2025-03-09T16:40:59.823910",
-    "output": "\u001b[91mError: Argument '--include-smart-intersection' appears multiple times (lines 3 and 5)\u001b[0m\nInstead use: --include-smart-intersection value1 value2 value3\n",
-    "return_code": 0,
-    "status": "PASSED"
-  }
-]

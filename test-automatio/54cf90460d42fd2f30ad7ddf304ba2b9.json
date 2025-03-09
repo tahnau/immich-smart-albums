@@ -1,9 +1,0 @@
-[
-  {
-    "command": "python3 immich-smart-albums.py --include-metadata-union filters/year-2024.json --include-local-filter-union '[{\"path\":\"$.tags.name\",\"regex\":\"family\"}]' --exclude-local-filter-union '[{\"path\":\"$.tags.name\",\"regex\":\"kids\"}]' | sort",
-    "timestamp": "2025-03-09T16:40:54.331826",
-    "output": "\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.tags.name:family' (include, union mode) matched 0 assets\nFilter '$.tags.name:kids' (exclude, union mode) matched 0 assets\nFound 5964 assets matching metadata criteria in filters/year-2024.json\nLoaded 0 exclude intersection filters\nLoaded 0 include intersection filters\nLoaded 1 exclude union filters\nLoaded 1 include union filters\nMetadata search union result: 5964 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/year-2024.json\n",
-    "return_code": 0,
-    "status": "PASSED"
-  }
-]

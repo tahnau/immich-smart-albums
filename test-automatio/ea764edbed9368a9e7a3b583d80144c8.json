@@ -1,9 +1,0 @@
-[
-  {
-    "command": "python3 immich-smart-albums.py --include-metadata-union filters/metadata-2023-Q2.json --include-local-filter-intersection '[{\"path\":\"$.exif.model\",\"regex\":\"Canon\"}]' --exclude-local-filter-intersection '[{\"path\":\"$.exif.model\",\"regex\":\"iPhone\"}]' | sort",
-    "timestamp": "2025-03-09T17:16:55.549447",
-    "output": "\u001b[93mInclude filter intersection returned 0 assets - final result must be empty\u001b[0m\n\u001b[93mNo assets matched all criteria.\u001b[0m\nFilter '$.exif.model:Canon' (include, intersection mode) matched 0 assets\nFilter '$.exif.model:iPhone' (exclude, intersection mode) matched 0 assets\nFound 855 assets matching metadata criteria in filters/metadata-2023-Q2.json\nLoaded 0 exclude union filters\nLoaded 0 include union filters\nLoaded 1 exclude intersection filters\nLoaded 1 include intersection filters\nMetadata search union result: 855 assets\nProcessing 1 metadata search files\nProcessing metadata file [1/1]: filters/metadata-2023-Q2.json\n",
-    "return_code": 0,
-    "status": "PASSED"
-  }
-]
