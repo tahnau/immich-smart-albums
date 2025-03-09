@@ -20,7 +20,7 @@ Immich Smart Albums automates photo organization by adding matching images to al
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/immich-smart-albums.git
+git clone https://github.com/tahnau/immich-smart-albums.git
 cd immich-smart-albums
 
 # Install dependencies
