@@ -1,19 +1,3 @@
-Okay, here's an improved README for `immich-smart-albums`, focusing on getting users started quickly with simple examples first and moving the complex details later.
-
-**Key Changes:**
-
-1.  **Reordered Structure:** Prioritizes "Getting Started" and simple examples.
-2.  **Simplified Examples:** Added truly basic examples for previewing and adding to an album.
-3.  **Clearer Configuration:** Emphasized setting API Key and Server URL early.
-4.  **Dedicated "How it Works" Section:** Briefly explains the concepts before the deep dive.
-5.  **Filter File Emphasis:** Encourages using `.json` files for filters and provides examples.
-6.  **Advanced Sections:** Moved the complex filter logic (tree diagram, merging process) to a dedicated "Advanced Filtering Logic" section.
-7.  **Improved Clarity:** Refined language and added headings for better readability.
-8.  **Added Example Filter Files:** Included content for basic `.json` filter files used in examples.
-
----
-
-```markdown
 # Immich Smart Albums
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -479,4 +463,4 @@ Make it executable (`chmod +x update_albums.sh`) and schedule it with `crontab -
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
+
