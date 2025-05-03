@@ -39,6 +39,8 @@ The script implements a powerful and flexible asset filtering system with suppor
 
 ### Filter Processing Overview
 
+The tool first determines an initial set of assets by finding the intersection (AND logic) of all specified --include-* categories (Metadata, Smart, Local). Then, it removes any assets that match the union (OR logic) of any specified --exclude-* filters. See the detailed tree below for exact logic, defaults, and dependencies.
+
 ```
 immich-smart-albums: Operation Tree
 
