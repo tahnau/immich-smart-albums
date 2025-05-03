@@ -221,6 +221,99 @@ python3 immich-smart-albums.py \
   --include-local-filter-intersection filters/local-apple.json \
   --album apple-photos-album-id
 ```
+**Example 8: Photos of Person A and B Together (Excluding Person C)**
+
+This example creates an album containing only photos where Person A and Person B appear *together*, but specifically excludes any photos where Person C is *also* present. This uses Immich's metadata search for people.
+
+**1. Find Person UUIDs:**
+
+   Go to the "Explore" -> "People" section in your Immich web UI. Click on each person (A, B, and C). The UUID is the part of the URL after `/people/`.
+
+   *   `https://your-immich.example.com/people/UUID_FOR_PERSON_A` -> Copy `UUID_FOR_PERSON_A`
+   *   `https://your-immich.example.com/people/UUID_FOR_PERSON_B` -> Copy `UUID_FOR_PERSON_B`
+   *   `https://your-immich.example.com/people/UUID_FOR_PERSON_C` -> Copy `UUID_FOR_PERSON_C`
+
+**2. Create Filter Files:**
+
+   *   **Method 1 (Recommended & Efficient): Single "Include" File**
+
+     Create `filters/people-A-and-B.json`. This file tells Immich to find photos containing *both* Person A AND Person B in a single API query. Immich's API natively handles the AND logic when multiple IDs are provided in the `personIds` array.
+
+     ```json
+     // filters/people-A-and-B.json
+     {
+       "personIds": ["UUID_FOR_PERSON_A", "UUID_FOR_PERSON_B"]
+     }
+     ```
+     *(Replace the placeholders with the actual UUIDs you found)*
+
+   *   **Method 2 (Illustrates Script Intersection): Separate "Include" Files**
+
+     Alternatively, to explicitly use the script's intersection logic, you could create two separate files. This requires two separate API calls instead of one, so Method 1 is generally preferred.
+
+     Create `filters/person-A.json`:
+     ```json
+     // filters/person-A.json
+     { "personIds": ["UUID_FOR_PERSON_A"] }
+     ```
+
+     Create `filters/person-B.json`:
+     ```json
+     // filters/person-B.json
+     { "personIds": ["UUID_FOR_PERSON_B"] }
+     ```
+     When using these separate files, you would use the `--include-metadata-intersection` flag in the command instead of `--include-metadata-union`. This tells the script to fetch assets matching Person A, fetch assets matching Person B, and then find the intersection (assets present in *both* results).
+
+   *   **Exclusion File (Same for both methods):**
+
+     Create `filters/person-C.json` to identify photos containing Person C.
+
+     ```json
+     // filters/person-C.json
+     {
+       "personIds": ["UUID_FOR_PERSON_C"]
+     }
+     ```
+     *(Replace the placeholder with the actual UUID you found)*
+
+**3. Find Album ID:**
+
+   Create or navigate to the target album in Immich. Copy the UUID from the album's URL (e.g., `.../albums/YOUR_ALBUM_ID`).
+
+**4. Run the Command:**
+
+   *   **Using Method 1 (Recommended):**
+
+     ```bash
+     # Replace YOUR_ALBUM_ID with the actual Album ID
+     python3 immich-smart-albums.py \
+       --include-metadata-union filters/people-A-and-B.json \
+       --exclude-metadata-union filters/person-C.json \
+       --album YOUR_ALBUM_ID \
+       --verbose
+     ```
+     *(Note: We use `--include-metadata-union` here because we only have one include file. The AND logic is handled *inside* that file by the Immich API.)*
+
+   *   **Using Method 2 (Illustrative):**
+
+     ```bash
+     # Replace YOUR_ALBUM_ID with the actual Album ID
+     python3 immich-smart-albums.py \
+       --include-metadata-intersection filters/person-A.json filters/person-B.json \
+       --exclude-metadata-union filters/person-C.json \
+       --album YOUR_ALBUM_ID \
+       --verbose
+     ```
+     *(Note: Here we explicitly use `--include-metadata-intersection` to combine the results of the two separate include files.)*
+
+**Explanation:**
+
+*   **Include Logic:**
+    *   Method 1: Uses a single API call efficiently asking for "A AND B".
+    *   Method 2: Uses two API calls ("find A", "find B") and the script calculates the intersection (assets matching *both*).
+*   **Exclude Logic:** `--exclude-metadata-union filters/person-C.json` identifies all assets where Person C is present.
+*   **Final Result:** The script takes the included set (A AND B) and removes any assets that were also found by the exclude rule (containing C). The remaining assets (Photos with A & B, but *not* C) are added to the specified album.
+
 
 ## Understanding Filter Files (.json)
 
