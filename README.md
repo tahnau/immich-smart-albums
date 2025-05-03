@@ -39,6 +39,83 @@ The script implements a powerful and flexible asset filtering system with suppor
 
 ### Filter Processing Overview
 
+```
+immich-smart-albums: Operation Tree
+
+Legend:
+  ∩ : Intersection (AND)
+  ∪ : Union (OR)
+  − : Set Difference (Subtract)
+  ALL: Represents the set of all assets (used as a default).
+  ∅ : Represents the empty set (used as a default).
+  A.json, B.json, ... : Filter definition files. Flags accepting files can take
+                        one or more filenames separated by spaces.
+
+───────────────────────────────────────────────────────────────────────────────
+ INCLUDE Ruleset (Determines the initial asset pool via Intersection)
+ Rule: An asset MUST satisfy the intersection (∩) of the results from ALL specified categories.
+       Effective Logic: Metadata_Result ∩ Smart_Result ∩ Local_Result
+       * Category Default: If an entire category has NO include flags, its result defaults to ALL.
+───────────────────────────────────────────────────────────────────────────────
+  ├─ Metadata (Include)
+  │   * Flag Default: If only Union or Intersection flag is used, the omitted one defaults to ALL.
+  │   ├─ Union (OR): --include-metadata-union A.json B.json
+  │   │   → Matches assets in A ∪ B ∪ ... (supports multiple files)
+  │   └─ Intersection (AND): --include-metadata-intersection C.json D.json
+  │       → Matches assets in C ∩ D ∩ ... (supports multiple files)
+  │   ▸ Metadata_Result = (Result from Union) ∩ (Result from Intersection)
+  │
+  ├─ Smart (AI Search - Include)
+  │   * Flag Default: If only Union or Intersection flag is used, the omitted one defaults to ALL.
+  │   ├─ Union (OR): --include-smart-union E.json F.json → E ∪ F ∪ ...
+  │   └─ Intersection (AND): --include-smart-intersection G.json H.json → G ∩ H ∩ ...
+  │   ▸ Smart_Result = (Result from Union) ∩ (Result from Intersection)
+  │
+  └─ Local (JSONPath / Regex - Include)
+      * Flag Default: If only Union or Intersection flag is used, the omitted one defaults to ALL.
+      * Dependency: Only evaluated if Metadata OR Smart Include flags are used.
+                     If neither is used, Local_Result defaults to ALL (overriding flag default).
+      ├─ Union (OR): --include-local-filter-union I.json J.json → I ∪ J ∪ ...
+      └─ Intersection (AND): --include-local-filter-intersection K.json L.json → K ∩ L ∩ ...
+      ▸ Local_Result = (Result from Union) ∩ (Result from Intersection) (subject to dependency)
+
+───────────────────────────────────────────────────────────────────────────────
+ EXCLUDE Ruleset (Removes assets from the initial pool via Union)
+ Rule: An asset is REMOVED if it matches the union (∪) of ANY specific exclude condition.
+       Effective Logic: Metadata_Exclude ∪ Smart_Exclude ∪ Local_Exclude
+       * Category Default: If an entire category has NO exclude flags, its contribution is ∅.
+───────────────────────────────────────────────────────────────────────────────
+  ├─ Metadata (Exclude)
+  │   * Flag Default: If a flag is omitted, its contribution defaults to ∅.
+  │   ├─ Union (OR): --exclude-metadata-union M.json N.json
+  │   │   → Flags assets in M ∪ N ∪ ... for removal.
+  │   └─ Intersection (AND): --exclude-metadata-intersection O.json P.json
+  │       → Flags assets in O ∩ P ∩ ... for removal.
+  │   ▸ Metadata_Exclude Set = (Assets matching Union) ∪ (Assets matching Intersection)
+  │
+  ├─ Smart (AI Search - Exclude)
+  │   * Flag Default: If a flag is omitted, its contribution defaults to ∅.
+  │   ├─ Union (OR): --exclude-smart-union Q.json R.json → Flags Q ∪ R ∪ ...
+  │   └─ Intersection (AND): --exclude-smart-intersection S.json T.json → Flags S ∩ T ∩ ...
+  │   ▸ Smart_Exclude Set = (Assets matching Union) ∪ (Assets matching Intersection)
+  │
+  └─ Local (JSONPath / Regex - Exclude)
+      * Flag Default: If a flag is omitted, its contribution defaults to ∅.
+      * No dependency on other categories.
+      ├─ Union (OR): --exclude-local-filter-union U.json V.json → Flags U ∪ V ∪ ...
+      └─ Intersection (AND): --exclude-local-filter-intersection W.json X.json → Flags W ∩ X ∩ ...
+      ▸ Local_Exclude Set = (Assets matching Union) ∪ (Assets matching Intersection)
+
+───────────────────────────────────────────────────────────────────────────────
+ FINAL ASSET SET Calculation (Set Difference)
+───────────────────────────────────────────────────────────────────────────────
+  Include_Pool = Metadata_Result ∩ Smart_Result ∩ Local_Result
+  Exclude_Pool = Metadata_Exclude ∪ Smart_Exclude ∪ Local_Exclude
+
+  Final Album Assets = Include_Pool − Exclude_Pool
+───────────────────────────────────────────────────────────────────────────────
+```
+
 Imagine three include categories: **metadata**, **smart**, and **local filters**. For each category, you can provide a list of rule files as arguments. When rule files are supplied:
 
 - **Union:** An asset qualifies if it meets **at least one** rule in the list.
