@@ -137,6 +137,60 @@ def api_request(method, url, headers, params=None, json_data=None, verbose=False
         log(f"API request error: {str(e)}", fg="red", verbose_only=False, verbose=verbose)
         return None
 
+def get_user_info(server_url, api_key, verbose=False):
+    """
+    Get current user information from Immich API.
+    
+    Parameters:
+      server_url (str): The Immich server URL
+      api_key (str): The API key for authentication
+      verbose (bool): Enable verbose logging
+      
+    Returns:
+      dict: User information or None if failed
+    """
+    url = f"{server_url}/api/users/me"
+    headers = {
+        "x-api-key": api_key,
+        "Accept": "application/json"
+    }
+    
+    log("Fetching current user information...", verbose_only=False, verbose=verbose)
+    result = api_request('get', url, headers, verbose=verbose)
+    
+    if result:
+        log("User information retrieved successfully:", fg="green", verbose_only=False, verbose=verbose)
+        print(json.dumps(result, indent=2))
+        return result
+    else:
+        log("Failed to retrieve user information", fg="red", verbose_only=False, verbose=verbose)
+        return None
+
+def has_search_actions(args):
+    """
+    Check if any search actions are specified in the arguments.
+    
+    Parameters:
+      args: Parsed command line arguments
+      
+    Returns:
+      bool: True if any search actions are specified, False otherwise
+    """
+    search_flags = [
+        'include_smart_union', 'include_smart_intersection',
+        'exclude_smart_union', 'exclude_smart_intersection',
+        'include_metadata_union', 'include_metadata_intersection',
+        'exclude_metadata_union', 'exclude_metadata_intersection',
+        'include_local_filter_union', 'include_local_filter_intersection',
+        'exclude_local_filter_union', 'exclude_local_filter_intersection'
+    ]
+    
+    for flag in search_flags:
+        if hasattr(args, flag) and getattr(args, flag):
+            return True
+    
+    return False
+
 def load_json_file(file_path, verbose=False):
     if not str(file_path).endswith('.json'):
         try:
@@ -372,6 +426,13 @@ def main():
         return 1
 
     args.server = args.server.rstrip('/')
+
+    # NEW FEATURE: Check if no search actions are provided, then show user info
+    if not has_search_actions(args):
+        log("No search actions specified. Showing current user information instead.", 
+            verbose_only=False, verbose=args.verbose)
+        get_user_info(args.server, args.key, args.verbose)
+        return 0
 
     # Global list to collect all assets from query searches.
     all_search_assets = []
