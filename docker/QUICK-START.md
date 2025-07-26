@@ -7,7 +7,7 @@ This guide will help you get up and running with Immich Smart Albums in just a f
 ### Clone and Configure
 ```bash
 # Clone the repository
-git clone https://github.com/immich-app/immich-smart-albums.git
+git clone https://github.com/tahnau/immich-smart-albums.git
 cd immich-smart-albums/docker
 
 # Create and edit environment file
