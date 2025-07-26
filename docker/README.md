@@ -21,7 +21,7 @@ Docker container solution for running Immich Smart Albums. This container provid
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/immich-app/immich-smart-albums.git
+   git clone https://github.com/tahnau/immich-smart-albums.git
    cd immich-smart-albums
    ```
 
