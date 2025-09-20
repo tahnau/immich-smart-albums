@@ -1,12 +1,14 @@
 # Immich Smart Albums
 
-This utility empowers you to create dynamic photo albums in your [Immich](https://immich.app/) instance. It leverages Immich's search capabilities (both metadata and AI-powered smart search) and adds powerful local filtering to help you organize your photos exactly the way you want.
+This utility automates the creation and updating of dynamic photo albums in your [Immich](https://immich.app/) instance. It combines Immich's powerful metadata and AI-powered smart search with advanced local filtering (JSONPath and regex) to precisely organize your photos.
 
-## The Story: Building the Perfect Album
+**Use Cases:**
+*   **Automated Sharing:** Automatically share photos of specific people from multiple Immich accounts into a single, shared album.
+*   **Curated Public Albums:** Create "sanitized" albums for public viewing (e.g., family photos for relatives) by excluding sensitive content or specific individuals.
+*   **Relationship Management:** Easily filter out photos where you and an "ex" appear together, ensuring your albums reflect current preferences.
+*   **Advanced Organization:** Build highly specific albums based on criteria like camera model, ISO, file path, or any other EXIF/asset metadata.
 
-Let's embark on a journey to create highly curated photo albums in Immich, starting simple and progressively adding more sophisticated filtering.
-
-### Chapter 1: Curating by People – From Individuals to Groups
+## Getting Started: Building Your First Smart Album
 
 Our first goal is to create an album for our friend, **Jane Doe**. We can easily do this by including her name:
 
@@ -37,7 +39,7 @@ python3 immich-smart-albums.py \
 ```
 This demonstrates how you can precisely control who appears in your albums.
 
-### Chapter 2: Time-Traveling with Dates and Metadata
+### Time-Traveling with Dates and Metadata
 
 Beyond people, dates are crucial for organizing memories. Let's refine "Jane's Album" to only include photos taken **after 2020**. We can add a metadata filter directly to our command:
 
@@ -71,7 +73,7 @@ Then, run the script:
 python3 immich-smart-albums.py --include-metadata-union filters/summer-2025.json --album "Summer 2025"
 ```
 
-### Chapter 3: Advanced Filtering with Local Filters
+### Advanced Filtering with Local Filters
 
 Sometimes, Immich's API doesn't expose all the properties we need for filtering. This is where **local filters** shine, allowing you to filter on asset data like `originalPath` using JSONPath and regular expressions. These filters are applied *after* the initial Immich API calls.
 
@@ -93,7 +95,7 @@ python3 immich-smart-albums.py \
 ```
 (Note: Local filters are applied to assets already selected by other API calls. If you want to filter an entire library by `originalPath`, you might need a broad initial filter like `metadata-all-photos.json` to fetch all assets first, which can be slow.)
 
-### Chapter 4: Intelligent Curation with Smart Search
+### Intelligent Curation with Smart Search
 
 Immich's AI-powered smart search allows for content-based filtering. Let's create an album of all photos that have **dogs** in them:
 
@@ -141,48 +143,23 @@ The script requires your Immich server URL and API key. These can be provided in
 
 ## Docker Usage
 
-This project provides a `Dockerfile` and `docker-compose.yml` to easily run the `immich-smart-albums` utility in a containerized environment.
+This project provides a `Dockerfile` and `docker-compose.yml` for running the `immich-smart-albums` utility in a containerized environment.
 
-### Configuration for Docker
+**Configuration:**
+The Docker setup uses the `.env` file in the project root for `IMMICH_SERVER_URL` and `IMMICH_API_KEY`. **Note:** If `IMMICH_SERVER_URL` is hardcoded in `docker-compose.yml`, it will override the value in `.env`. When running inside Docker, `localhost` refers to the container, not your host. For `IMMICH_SERVER_URL`, consider using `http://host.docker.internal:2283` (for Docker Desktop) or your host machine's IP address.
 
-The Docker setup is designed to use the `.env` file located in the project root for your Immich server URL and API key.
-
-**Important Note on `IMMICH_SERVER_URL`:**
-When running inside Docker, `localhost` refers to the container itself, not your host machine. You have two primary options for configuring the Immich server address:
-
-1.  **Overriding in `docker-compose.yml`:**
-    You can explicitly set the `IMMICH_SERVER_URL` in `docker-compose.yml`. This will override any value set in `.env` for the container.
-
-    To find your Docker host IP on Linux, you might use `ip addr show docker0` or `ifconfig docker0`.
-
-2.  **Using `host.docker.internal` (Recommended for Docker Desktop):**
-    Edit your project's `.env` file to set `IMMICH_SERVER_URL` to `http://host.docker.internal:2283` (or your Immich port). This special hostname resolves to your host machine's IP from within the Docker container.
-
-### Running with Docker Compose
-
-1.  **Build the Docker image:**
-    ```bash
-    docker compose build
-    ```
-
-2.  **Run the application:**
-    The entire project folder is copied into the Docker environment, making `my_filters` configurations directly available.
-
-    To run the application and print user profile details, album list, and named faces:
-    ```bash
-    docker compose run immich-smart-albums
-    ```
-
-3.  **Using filters and arguments:**
-    Pass arguments to the script by appending them to the `docker compose run` command. For example, to use a smart filter:
-    ```bash
-    docker compose run immich-smart-albums --include-smart-intersection my_filters/smart-dog.json
-    ```
-
-### Running Custom Scripts
-
-To execute custom shell scripts from the project root within the Docker container (e.g., `my_custom_script.sh`):
+**Commands:**
 ```bash
+# Build the Docker image
+docker compose build
+
+# Run the application (prints user info, albums, and named faces by default)
+docker compose run immich-smart-albums
+
+# Run with filters and arguments (e.g., a smart filter)
+docker compose run immich-smart-albums --include-smart-intersection my_filters/smart-dog.json
+
+# Execute a custom script within the container
 docker compose run immich-smart-albums bash -c "./my_custom_script.sh"
 ```
 
@@ -215,34 +192,63 @@ The main script is `immich-smart-albums.py`. It is highly configurable via comma
 
 ### Advanced Usage
 
-The script provides a wide range of options for filtering and combining assets.
+The `immich-smart-albums.py` script offers a comprehensive set of command-line arguments for fine-grained control over asset selection and album management.
 
-**Note on Payload Handling:** For arguments that accept a payload (e.g., `--include-metadata-union`, `--include-smart-union`), the script intelligently determines if the input is a file path (ending with `.json`) or a direct JSON string. A convenient way to construct complex search queries is to use the Immich web UI's search functionality. The resulting JSON payload for your search query is often visible in the browser's address bar, which you can then copy and save as a `.json` file for use with this script.
+#### General Options
 
-Here are some of the key arguments:
+*   `--album ALBUM`: Specifies the target album by ID (UUID) or name. If provided, matching assets will be added to this album. If omitted, the script runs in preview mode, displaying selected assets without making changes.
+*   `--max-assets MAX_ASSETS`: Limits the total number of assets processed after all filters are applied. This affects both console output in preview mode and the number of assets added to an album. Note that selection is arbitrary as it operates on an unordered set.
+*   `--default-smart-result-limit DEFAULT_SMART_RESULT_LIMIT`: Sets the default result limit for smart searches. Immich's smart search results are sorted by match ratio. This global setting defaults to 200 but can be overridden per query using the `@amount` notation (e.g., `'dog@500'`).
+*   `--verbose`: Enables verbose output for detailed debugging information.
 
-*   `--include-metadata-union`: Include assets that match any of the specified metadata filters.
-*   `--include-metadata-intersection`: Include assets that match all of the specified metadata filters.
-*   `--exclude-metadata-union`: Exclude assets that match any of the specified metadata filters.
-*   `--exclude-metadata-intersection`: Exclude assets that match all of the specified metadata filters.
-*   `--include-smart-union`: Include assets that match any of the specified smart search queries.
-*   `--include-smart-intersection`: Include assets that match all of the specified smart search queries.
-*   `--exclude-smart-union`: Exclude assets that match any of the specified smart search queries.
-*   `--exclude-smart-intersection`: Exclude assets that match all of the specified smart search queries.
-*   `--include-person-ids-union`: Include assets that contain any of the specified person IDs.
-*   `--include-person-ids-intersection`: Include assets that contain all of the specified person IDs.
-*   `--exclude-person-ids-union`: Exclude assets that contain any of the specified person IDs.
-*   `--exclude-person-ids-intersection`: Exclude assets that contain all of the specified person IDs.
-*   `--include-local-filter-union`: Include assets that match any of the specified local filters (JSONPath and regex).
-*   `--include-local-filter-intersection`: Include assets that match all of the specified local filters.
-*   `--exclude-local-filter-union`: Exclude assets that match any of the specified local filters.
-*   `--exclude-local-filter-intersection`: Exclude assets that match all of the specified local filters.
+#### Filtering Arguments
 
-**Note on Smart Search Threshold:** Immich's smart search results are sorted by their match ratio and require a threshold to return results. You can specify this threshold using the `@amount` filter within your query (e.g., `"dog@200"` for a threshold of 200). The default threshold is typically 200 if not specified.
+The script supports various filtering mechanisms, each with `union` (OR logic) and `intersection` (AND logic) modes for both `include` and `exclude` operations. Arguments that accept a payload (e.g., `--include-metadata-union`, `--include-smart-union`) intelligently determine if the input is a file path (ending with `.json`) or a direct JSON string. For complex queries, you can often construct them using the Immich web UI's search functionality and then copy the resulting JSON payload from the browser's address bar into a `.json` file for reuse.
 
-**Performance Note:** Each value provided to an `include` or `exclude` parameter (e.g., `--include-metadata-union "filter1.json" "filter2.json"`) results in a separate Immich API call. Each of these calls might involve loading multiple pages of assets. While Immich's search is generally efficient, for optimal performance, consider merging multiple search criteria into a single JSON search query whenever possible to reduce the number of API round trips.
+**1. Person Filters (by Name)**
 
-For more details on the available arguments, run the script with the `--help` flag.
+These filters allow you to select or exclude assets based on the presence of specific individuals, identified by their names in Immich.
+
+*   `--include-person-names-union NAME [NAME ...]`: Includes assets containing *any* of the specified person names.
+*   `--include-person-names-intersection NAME [NAME ...]`: Includes assets containing *all* of the specified person names.
+*   `--exclude-person-names-union NAME [NAME ...]`: Excludes assets containing *any* of the specified person names.
+*   `--exclude-person-names-intersection NAME [NAME ...]`: Excludes assets containing *all* of the specified person names.
+
+**2. Smart Search Filters**
+
+Leverage Immich's AI-powered smart search to filter assets based on their content (e.g., objects, scenes).
+
+*   `--include-smart-union QUERY [QUERY ...]`: Includes assets that match *any* of the specified smart search queries.
+*   `--include-smart-intersection QUERY [QUERY ...]`: Includes assets that match *all* of the specified smart search queries.
+*   `--exclude-smart-union QUERY [QUERY ...]`: Excludes assets that match *any* of the specified smart search queries.
+*   `--exclude-smart-intersection QUERY [QUERY ...]`: Excludes assets that match *all* of the specified smart search queries.
+
+**3. Metadata Filters**
+
+Filter assets using Immich's rich metadata, such as dates, tags, or other properties.
+
+*   `--include-metadata-union PAYLOAD [PAYLOAD ...]`: Includes assets that match *any* of the specified metadata filters.
+*   `--include-metadata-intersection PAYLOAD [PAYLOAD ...]`: Includes assets that match *all* of the specified metadata filters.
+*   `--exclude-metadata-union PAYLOAD [PAYLOAD ...]`: Excludes assets that match *any* of the specified metadata filters.
+*   `--exclude-metadata-intersection PAYLOAD [PAYLOAD ...]`: Excludes assets that match *all* of the specified metadata filters.
+
+**4. Local Filters (JSONPath and Regex)**
+
+These filters are applied *after* initial Immich API calls, allowing for highly specific filtering on asset data using JSONPath expressions and regular expressions. This is useful for properties not directly exposed by Immich's search API, such as `originalPath`.
+
+*   `--include-local-filter-union FILE_PATH [FILE_PATH ...]`: Includes assets that match *any* of the specified local filters.
+*   `--include-local-filter-intersection FILE_PATH [FILE_PATH ...]`: Includes assets that match *all* of the specified local filters.
+*   `--exclude-local-filter-union FILE_PATH [FILE_PATH ...]`: Excludes assets that match *any* of the specified local filters.
+*   `--exclude-local-filter-intersection FILE_PATH [FILE_PATH ...]`: Excludes assets that match *all* of the specified local filters.
+
+#### Performance Considerations
+
+Each value provided to an `include` or `exclude` parameter (e.g., `--include-metadata-union "filter1.json" "filter2.json"`) results in a separate Immich API call. Each of these calls might involve loading multiple pages of assets. While Immich's search is generally efficient, for optimal performance, consider merging multiple search criteria into a single JSON search query whenever possible to reduce the number of API round trips.
+
+For a complete list of arguments and their descriptions, run the script with the `--help` flag:
+```bash
+python3 immich-smart-albums.py --help
+```
 
 
 ## Available Fields for Local Filters
@@ -250,34 +256,33 @@ For more details on the available arguments, run the script with the `--help` fl
 Local filters (`--*-local-filter-*`) operate on the asset data fetched *after* the initial Metadata/Smart search. Here's an example structure of the data available for JSONPath queries:
 
 ```json
-// Example Asset Data Structure for Local Filters
 {
-    "id": "53c77aa3-52ff-4819-8900-d7bf0b134752", // Asset UUID
-    "deviceAssetId": "20250228_161739.JPG",       // Original ID from device
-    "ownerId": "6f9cf9e4-c538-40c4-b18f-9663576679d5", // User UUID
+    "id": "53c77aa3-52ff-4819-8900-d7bf0b134752",
+    "deviceAssetId": "20250228_161739.JPG",
+    "ownerId": "6f9cf9e4-c538-40c4-b18f-9663576679d5",
     "deviceId": "Library Import",
     "libraryId": "f01b0af6-14e9-4dc0-9e78-4e6fb9181bae",
-    "type": "IMAGE", // or VIDEO
-    "originalPath": "/path/on/server/library/folder/file.jpg", // Full path in library
+    "type": "IMAGE",
+    "originalPath": "/path/on/server/library/folder/file.jpg",
     "originalFileName": "file.jpg",
     "originalMimeType": "image/jpeg",
     "thumbhash": "...",
-    "fileCreatedAt": "2025-02-28T14:17:39.402Z", // Filesystem creation time
-    "fileModifiedAt": "2025-02-28T14:17:39.000Z", // Filesystem modification time
-    "localDateTime": "2025-02-28T16:17:39.402Z", // Date taken (best guess by Immich)
-    "updatedAt": "2025-03-03T00:00:32.609Z",   // Immich DB update time
+    "fileCreatedAt": "2025-02-28T14:17:39.402Z",
+    "fileModifiedAt": "2025-02-28T14:17:39.000Z",
+    "localDateTime": "2025-02-28T16:17:39.402Z",
+    "updatedAt": "2025-03-03T00:00:32.609Z",
     "isFavorite": false,
     "isArchived": false,
     "isTrashed": false,
-    "duration": "0:00:00.00000", // For videos
-    "exifInfo": { // May be null if no EXIF data
+    "duration": "0:00:00.00000",
+    "exifInfo": {
         "make": "Apple",
         "model": "iPhone 15 Pro",
         "exifImageWidth": 4032,
         "exifImageHeight": 3024,
         "fileSizeInByte": 1695013,
         "orientation": "1",
-        "dateTimeOriginal": "2025-02-28T14:17:39.402+00:00", // Actual EXIF date
+        "dateTimeOriginal": "2025-02-28T14:17:39.402+00:00",
         "modifyDate": "2025-02-28T14:17:39+00:00",
         "timeZone": "UTC+2",
         "lensModel": "iPhone 15 Pro back triple camera 2.22mm f/2.2",
@@ -287,20 +292,20 @@ Local filters (`--*-local-filter-*`) operate on the asset data fetched *after* t
         "exposureTime": "1/34",
         "latitude": 60.1,
         "longitude": 24.1,
-        "city": "Helsinki", // From GPS or reverse geocoding
+        "city": "Helsinki",
         "state": "Uusimaa",
         "country": "Finland",
         "description": "",
-        "projectionType": null, // For spherical panoramas
+        "projectionType": null,
         "rating": null
     },
-    "livePhotoVideoId": null, // UUID if it's a live photo
-    "people": [], // IMPORTANT: This field is usually EMPTY here. Use Metadata search (`personIds`) to filter by people.
-    "checksum": "...", // File checksum
+    "livePhotoVideoId": null,
+    "people": [],
+    "checksum": "...",
     "isOffline": false,
     "hasMetadata": true,
     "duplicateId": null,
-    "resized": true // Whether Immich has generated web/thumbnail versions
+    "resized": true
 }
 ```
 
