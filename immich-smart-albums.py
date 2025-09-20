@@ -1,551 +1,322 @@
 #!/usr/bin/env python3
-import requests
-import argparse
-import json
-import re
-import os
 import sys
+import re
 from functools import reduce
-from jsonpath_ng import parse
 
-def compute_merged(node, indent=0):
-    """
-    Recursively computes the merged set of asset IDs for a node and logs statistics with indentation.
-    
-    Modes:
-      - "union": Union of children (or union of all sets in 'results' if leaf).
-      - "intersection": Intersection of children (or intersection of all sets in 'results' if leaf).
-      - "minus": Subtract the merged set of the second child from the first child's merged set.
-    
-    This version prints an "Entering" message before recursing into children,
-    then logs the results of merging after processing them.
-    
-    Parameters:
-      node (dict): Current node.
-      indent (int): Indentation level for logging.
-    
-    Returns:
-      set: Merged asset IDs.
-    """
-    prefix = "    " * indent  # 4 spaces per indent level
-
-    if "children" in node and node["children"]:
-        # Log entering the node
-        print(f"{prefix}[MERGE - NODE] Entering node with mode '{node['mode']}' having {len(node['children'])} children")
-        
-        # Compute merged set for each child.
-        child_results = []
-        for child in node["children"]:
-            res = compute_merged(child, indent=indent+1)
-            child_results.append(res)
-        
-        child_counts = [len(r) for r in child_results]
-        print(f"{prefix}[MERGE - NODE] About to merge children with counts: {child_counts}")
-        
-        # Merge children based on the node's mode.
-        if node["mode"] == "union":
-            merged = set.union(*child_results) if child_results else set()
-            op = "Union"
-        elif node["mode"] == "intersection":
-            merged = set.intersection(*child_results) if child_results else set()
-            op = "Intersection"
-        elif node["mode"] == "minus":
-            if len(child_results) != 2:
-                raise ValueError("Minus node must have exactly two children (include and exclude)")
-            merged = child_results[0] - child_results[1]
-            op = "Minus (Subtract)"
-        else:
-            raise ValueError(f"Unknown mode: {node['mode']}")
-        
-        print(f"{prefix}[MERGE - NODE] {op} result: {len(merged)} items")
-        node["merged"] = merged
-        return merged
-
-    elif "results" in node and node["results"]:
-        # Log entering leaf node.
-        keys = list(node["results"].keys())
-        print(f"{prefix}[MERGE - LEAF] Entering leaf node with mode '{node['mode']}'. Query keys: {keys}")
-        
-        result_counts = {}
-        result_sets = []
-        for key, res in node["results"].items():
-            res_set = set(res)
-            result_sets.append(res_set)
-            result_counts[key] = len(res_set)
-        
-        print(f"{prefix}[MERGE - LEAF] Raw query counts: {result_counts}")
-        
-        # Merge based on the node's mode.
-        if node["mode"] == "union":
-            merged = set.union(*result_sets) if result_sets else set()
-            op = "Union"
-        elif node["mode"] == "intersection":
-            merged = set.intersection(*result_sets) if result_sets else set()
-            op = "Intersection"
-        else:
-            merged = set()
-            op = "Unknown"
-        
-        print(f"{prefix}[MERGE - LEAF] {op} result: {len(merged)} items")
-        node["merged"] = merged
-        return merged
-
-    else:
-        print(f"{prefix}[MERGE] Node empty. Merged count: 0")
-        node["merged"] = set()
-        return set()
+from lib.logger import log
+from lib.api import ImmichAPI
+from lib.config import get_config, has_search_actions
+from lib.filter import Filter, normalize_query, load_json_file, normalize_json_query
 
 
-#################################
-# HELPER FUNCTIONS
-#################################
-def log(message, fg=None, verbose_only=True, verbose=False):
-    if not verbose_only or verbose:
-        if fg == "red":
-            print(f"\033[91m{message}\033[0m")
-        elif fg == "green":
-            print(f"\033[92m{message}\033[0m")
-        elif fg == "yellow":
-            print(f"\033[93m{message}\033[0m")
-        else:
-            print(message)
+def get_asset_set(assets):
+    return {asset['id'] for asset in assets}
 
-def api_request(method, url, headers, params=None, json_data=None, verbose=False):
-    log(f"API {method} request to {url}", verbose_only=True, verbose=verbose)
-    if params:
-        log(f"Params: {params}", verbose_only=True, verbose=verbose)
-    if json_data:
-        log(f"Payload: {json_data}", verbose_only=True, verbose=verbose)
-    try:
-        if method.lower() == 'get':
-            response = requests.get(url, headers=headers, params=params)
-        elif method.lower() == 'post':
-            response = requests.post(url, headers=headers, json=json_data)
-        elif method.lower() == 'put':
-            response = requests.put(url, headers=headers, json=json_data)
-        else:
-            log(f"Unsupported method: {method}", fg="red", verbose_only=False, verbose=verbose)
-            return None
-        log(f"Response status: {response.status_code}", verbose_only=True, verbose=verbose)
-        text = response.text if len(response.text) <= 4500 else response.text[:4500] + "..."
-        log(f"Response: {text}", verbose_only=True, verbose=verbose)
-        if not response.ok:
-            log(f"API request failed: {response.status_code} - {response.text}", fg="red", verbose_only=False, verbose=verbose)
-            return None
-        return response.json() if response.text else None
-    except requests.exceptions.RequestException as e:
-        log(f"API request error: {str(e)}", fg="red", verbose_only=False, verbose=verbose)
-        return None
 
-def get_user_info(server_url, api_key, verbose=False):
-    """
-    Get current user information from Immich API.
-    
-    Parameters:
-      server_url (str): The Immich server URL
-      api_key (str): The API key for authentication
-      verbose (bool): Enable verbose logging
-      
-    Returns:
-      dict: User information or None if failed
-    """
-    url = f"{server_url}/api/users/me"
-    headers = {
-        "x-api-key": api_key,
-        "Accept": "application/json"
-    }
-    
-    log("Fetching current user information...", verbose_only=False, verbose=verbose)
-    result = api_request('get', url, headers, verbose=verbose)
-    
-    if result:
-        log("User information retrieved successfully:", fg="green", verbose_only=False, verbose=verbose)
-        print(json.dumps(result, indent=2))
-        return result
-    else:
-        log("Failed to retrieve user information", fg="red", verbose_only=False, verbose=verbose)
-        return None
-
-def has_search_actions(args):
-    """
-    Check if any search actions are specified in the arguments.
-    
-    Parameters:
-      args: Parsed command line arguments
-      
-    Returns:
-      bool: True if any search actions are specified, False otherwise
-    """
-    search_flags = [
-        'include_smart_union', 'include_smart_intersection',
-        'exclude_smart_union', 'exclude_smart_intersection',
-        'include_metadata_union', 'include_metadata_intersection',
-        'exclude_metadata_union', 'exclude_metadata_intersection',
-        'include_local_filter_union', 'include_local_filter_intersection',
-        'exclude_local_filter_union', 'exclude_local_filter_intersection'
-    ]
-    
-    for flag in search_flags:
-        if hasattr(args, flag) and getattr(args, flag):
-            return True
-    
-    return False
-
-def load_json_file(file_path, verbose=False):
-    if not str(file_path).endswith('.json'):
-        try:
-            data = json.loads(file_path)
-            log("Successfully parsed input as JSON string", verbose_only=True, verbose=verbose)
-            return data
-        except json.JSONDecodeError:
-            pass
-    try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-        log(f"Successfully loaded JSON from {file_path}", verbose_only=True, verbose=verbose)
-        return data
-    except (json.JSONDecodeError, FileNotFoundError) as e:
-        log(f"Error loading JSON file {file_path}: {str(e)}", fg="red", verbose_only=False, verbose=verbose)
-        return None
-
-def execute_search(server_url, api_key, query, search_type, verbose=False):
-    url = f"{server_url}/api/search/{search_type}"
-    headers = {
-        "x-api-key": api_key,
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
-    result_limit = query.get("resultLimit") if query and "resultLimit" in query else None
-    if result_limit:
-        log(f"Using result limit: {result_limit} for {search_type} search", verbose_only=True, verbose=verbose)
-    all_assets = []
-    page = 1
-    size = 100
-    while True:
-        payload = query.copy() if query else {}
-        payload.pop("page", None)
-        payload["page"] = page
-        payload["withExif"] = True
-        payload["size"] = size
-        log(f"Executing {search_type} search (page {page})", verbose_only=True, verbose=verbose)
-        result = api_request('post', url, headers, json_data=payload, verbose=verbose)
-        if not result or "assets" not in result:
-            log(f"Search returned no valid results on page {page}", fg="yellow", verbose_only=True, verbose=verbose)
-            break
-        assets = result.get("assets", {}).get("items", [])
-        all_assets.extend(assets)
-        if result_limit and len(all_assets) >= result_limit:
-            log(f"Reached result limit ({result_limit}), stopping search", verbose_only=True, verbose=verbose)
-            all_assets = all_assets[:result_limit]
-            break
-        if result.get("assets", {}).get("nextPage") is None:
-            log(f"Reached last page ({page}), total assets: {len(all_assets)}", verbose_only=True, verbose=verbose)
-            break
-        log(f"Retrieved {len(assets)} assets from page {page}", verbose_only=True, verbose=verbose)
-        page += 1
-    return all_assets
-
-def apply_filters(assets, filters, is_include=True, use_intersection=True, verbose=False):
-    if not filters:
-        return {asset["id"] for asset in assets} if is_include else set()
-    filtered_assets = set()
-    filter_counts = {}
-    asset_matches = {asset["id"]: set() for asset in assets}
-    for f in filters:
-        path = f.get("path")
-        regex = f.get("regex")
-        description = f.get("description", f"{path}:{regex}")
-        filter_counts[description] = 0
-    for asset in assets:
-        asset_id = asset["id"]
-        matched_filters = set()
-        for f in filters:
-            path = f.get("path")
-            regex = f.get("regex")
-            description = f.get("description", f"{path}:{regex}")
-            try:
-                jsonpath_expr = parse(path)
-                matches = [match.value for match in jsonpath_expr.find(asset)]
-                if matches:
-                    if regex:
-                        if any(match is not None and re.search(regex, str(match), re.IGNORECASE) for match in matches):
-                            matched_filters.add(description)
-                            asset_matches[asset_id].add(description)
-                            filter_counts[description] += 1
-                            log(f"Asset {asset_id} matched filter: {description}", verbose_only=True, verbose=verbose)
-                    else:
-                        matched_filters.add(description)
-                        asset_matches[asset_id].add(description)
-                        filter_counts[description] += 1
-                        log(f"Asset {asset_id} matched path: {path}", verbose_only=True, verbose=verbose)
-            except Exception as e:
-                log(f"JSONPath error for asset {asset_id} with expression '{path}': {str(e)}", fg="red", verbose_only=True, verbose=verbose)
-        if is_include:
-            if use_intersection:
-                if len(matched_filters) == len(filters):
-                    filtered_assets.add(asset_id)
-                    log(f"Asset {asset_id} matched ALL include filters (intersection mode)", verbose_only=True, verbose=verbose)
+def _process_filters(
+    immich_api,
+    all_search_assets,
+    union_rules,
+    intersection_rules,
+    search_type='metadata',
+    default_smart_result_limit=200
+):
+    union_assets = set()
+    if union_rules:
+        for rule in union_rules:
+            if search_type == 'smart':
+                query = normalize_query(rule, default_smart_result_limit, immich_api.verbose)
             else:
-                if matched_filters:
-                    filtered_assets.add(asset_id)
-                    log(f"Asset {asset_id} matched at least one include filter (union mode)", verbose_only=True, verbose=verbose)
-        else:
-            if use_intersection:
-                if len(matched_filters) == len(filters):
-                    filtered_assets.add(asset_id)
-                    log(f"Asset {asset_id} matched ALL exclude filters (intersection mode)", verbose_only=True, verbose=verbose)
+                query = normalize_json_query(rule, immich_api.verbose)
+
+            if query:
+                assets = immich_api.execute_search(query, search_type)
+                all_search_assets.extend(assets)
+                union_assets.update(get_asset_set(assets))
+
+    intersection_assets = set()
+    if intersection_rules:
+        all_intersection_sets = []
+        for rule in intersection_rules:
+            if search_type == 'smart':
+                query = normalize_query(rule, default_smart_result_limit, immich_api.verbose)
             else:
-                if matched_filters:
-                    filtered_assets.add(asset_id)
-                    log(f"Asset {asset_id} matched at least one exclude filter (union mode)", verbose_only=True, verbose=verbose)
-    for desc, count in filter_counts.items():
-        log(f"Filter '{desc}' ({'include' if is_include else 'exclude'}, {'intersection' if use_intersection else 'union'} mode) matched {count} assets", verbose_only=False, verbose=verbose)
-    return filtered_assets
+                query = normalize_json_query(rule, immich_api.verbose)
 
-def parse_filters(filter_inputs, verbose=False):
-    filters = []
-    for inp in filter_inputs or []:
-        data = None
-        if os.path.exists(inp):
-            data = load_json_file(inp, verbose)
-            if data and isinstance(data, list):
-                filters.extend(data)
-                log(f"Loaded {len(data)} filters from file {inp}", verbose_only=True, verbose=verbose)
-            elif data:
-                log(f"Filter file {inp} must contain a JSON array", fg="red", verbose_only=False, verbose=verbose)
-        else:
-            try:
-                data = json.loads(inp)
-                if isinstance(data, list):
-                    filters.extend(data)
-                    log(f"Loaded {len(data)} filters from raw JSON value", verbose_only=True, verbose=verbose)
-                else:
-                    log(f"Raw JSON input must be a JSON array, got {type(data).__name__}", fg="red", verbose_only=False, verbose=verbose)
-            except Exception as e:
-                parts = inp.split(':', 1)
-                if len(parts) == 2:
-                    filters.append({"path": parts[0], "regex": parts[1]})
-                    log(f"Added filter from command line: {inp}", verbose_only=True, verbose=verbose)
-                else:
-                    log(f"Error parsing filter input {inp}: {e}", fg="red", verbose_only=False, verbose=verbose)
-    return filters
+            if query:
+                assets = immich_api.execute_search(query, search_type)
+                all_search_assets.extend(assets)
+                all_intersection_sets.append(get_asset_set(assets))
 
-def add_assets_to_album(server_url, api_key, album_id, asset_ids, chunk_size=500, verbose=False):
-    url = f"{server_url}/api/albums/{album_id}/assets"
-    headers = {"x-api-key": api_key, "Content-Type": "application/json", "Accept": "application/json"}
-    total_added = 0
-    asset_ids_list = list(asset_ids)
-    for i in range(0, len(asset_ids_list), chunk_size):
-        chunk = asset_ids_list[i:i+chunk_size]
-        payload = {"ids": chunk}
-        log(f"Adding chunk of {len(chunk)} assets to album {album_id} ({i+1}-{i+len(chunk)} of {len(asset_ids_list)})", verbose_only=False, verbose=verbose)
-        result = api_request('put', url, headers, json_data=payload, verbose=verbose)
-        if result is not None:
-            total_added += len(chunk)
-            for aid in chunk:
-                log(f"{server_url}/photos/{aid}", verbose_only=False, verbose=verbose)
-    log(f"Added {total_added} of {len(asset_ids_list)} assets to album", 
-        fg="green" if total_added == len(asset_ids_list) else "yellow", 
-        verbose_only=False, verbose=verbose)
-    return total_added
+        if all_intersection_sets:
+            intersection_assets = set.intersection(*all_intersection_sets)
 
-#################################
-# BUILDING QUERY NODES (DEFERRED MERGING)
-#################################
-def build_query_node(query_files, search_type, merge_mode, server, api_key, verbose, all_search_assets):
-    """
-    For each query file in query_files, execute the search and create a leaf node.
-    Then, if more than one node exists, wrap them in a parent node with the specified merge_mode.
-    Also, append each search’s assets to all_search_assets (a mutable list).
-    """
-    nodes = []
-    for idx, qf in enumerate(query_files or []):
-        query = load_json_file(qf, verbose)
-        if not query:
-            log(f"Failed to load query from {qf}", fg="red", verbose_only=False, verbose=verbose)
-            continue
-        assets = execute_search(server, api_key, query, search_type, verbose)
-        # Collect assets for later use (e.g. local filtering fallback)
-        all_search_assets.extend(assets)
-        result_set = {asset["id"] for asset in assets} if assets else set()
-        node = {
-            "mode": "union",  # Leaf node mode (only one result set)
-            "results": {qf: result_set}
-        }
-        nodes.append(node)
-    if not nodes:
+    if union_rules and intersection_rules:
+        return union_assets.intersection(intersection_assets)
+    elif union_rules:
+        return union_assets
+    elif intersection_rules:
+        return intersection_assets
+    else:
         return None
-    if len(nodes) == 1:
-        return nodes[0]
-    return {"mode": merge_mode, "children": nodes}
 
-#################################
-# MAIN FUNCTION
-#################################
-def main():
-    # Check for duplicate arguments.
-    seen = {}
-    for i, arg in enumerate(sys.argv):
-        if arg.startswith('--'):
-            if arg in seen:
-                log(f"Error: Argument '{arg}' appears multiple times (lines {seen[arg]} and {i})", fg="red", verbose_only=False, verbose=True)
-                return 1
-            seen[arg] = i
 
-    parser = argparse.ArgumentParser(
-        description="Search Immich for photos using metadata and smart search APIs, apply JSONPath and regex filters, and optionally add to an album."
+def process_query_filters(filter_type, args, immich_api, all_search_assets):
+    """Processes query-based filters (metadata, smart) for include and exclude."""
+
+    include_union_files = getattr(args, f"include_{filter_type}_union", None)
+    include_intersection_files = getattr(
+        args, f"include_{filter_type}_intersection", None)
+
+    include_assets = _process_filters(
+        immich_api,
+        all_search_assets,
+        include_union_files,
+        include_intersection_files,
+        search_type=filter_type,
+        default_smart_result_limit=args.default_smart_result_limit
     )
-    parser.add_argument("--key", help="Your Immich API Key (env: IMMICH_API_KEY)", default=None)
-    parser.add_argument("--server", help="Your Immich server URL (env: IMMICH_SERVER_URL)", default=None)
-    parser.add_argument("--album", help="ID of the album to add matching assets to (optional)")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging")
-    parser.add_argument("--max-assets", type=int, help="Maximum number of assets to process", default=None)
 
-    # Define flags in dictionaries for easier looping.
-    smart_include = {"union": "--include-smart-union", "intersection": "--include-smart-intersection"}
-    smart_exclude = {"union": "--exclude-smart-union", "intersection": "--exclude-smart-intersection"}
-    meta_include  = {"union": "--include-metadata-union", "intersection": "--include-metadata-intersection"}
-    meta_exclude  = {"union": "--exclude-metadata-union", "intersection": "--exclude-metadata-intersection"}
-    local_include = {"union": "--include-local-filter-union", "intersection": "--include-local-filter-intersection"}
-    local_exclude = {"union": "--exclude-local-filter-union", "intersection": "--exclude-local-filter-intersection"}
+    exclude_union_files = getattr(args, f"exclude_{filter_type}_union", None)
+    exclude_intersection_files = getattr(
+        args, f"exclude_{filter_type}_intersection", None)
 
-    for group in [smart_include, smart_exclude, meta_include, meta_exclude, local_include, local_exclude]:
-        for mode, flag in group.items():
-            parser.add_argument(flag, nargs="+", type=str, help=f"Path to JSON files for {flag} (mode: {mode})")
+    exclude_assets = _process_filters(
+        immich_api,
+        all_search_assets,
+        exclude_union_files,
+        exclude_intersection_files,
+        search_type=filter_type,
+        default_smart_result_limit=args.default_smart_result_limit
+    )
 
-    args = parser.parse_args()
-    if not args.key:
-        args.key = os.environ.get("IMMICH_API_KEY")
-    if not args.server:
-        args.server = os.environ.get("IMMICH_SERVER_URL")
-    if not args.key:
-        log("Error: API key is required. Set IMMICH_API_KEY environment variable or use --key parameter.", fg="red", verbose_only=False, verbose=args.verbose)
+    return include_assets, exclude_assets or set()
+
+
+def process_person_filters(args, immich_api, all_search_assets):
+    """Processes person name filters for include and exclude."""
+
+    # Includes
+    person_includes = None
+    include_union_assets = set()
+    if args.include_person_ids_union:
+        for person_id in args.include_person_ids_union:
+            assets = immich_api.execute_search({"personIds": [person_id]}, "metadata")
+            all_search_assets.extend(assets)
+            include_union_assets.update(get_asset_set(assets))
+
+    include_intersection_assets = set()
+    if args.include_person_ids_intersection:
+        intersection_sets = []
+        for person_id in args.include_person_ids_intersection:
+            assets = immich_api.execute_search({"personIds": [person_id]}, "metadata")
+            all_search_assets.extend(assets)
+            intersection_sets.append(get_asset_set(assets))
+        if intersection_sets:
+            include_intersection_assets = set.intersection(*intersection_sets)
+
+    if args.include_person_ids_union and args.include_person_ids_intersection:
+        person_includes = include_union_assets.intersection(include_intersection_assets)
+    elif args.include_person_ids_union:
+        person_includes = include_union_assets
+    elif args.include_person_ids_intersection:
+        person_includes = include_intersection_assets
+
+    # Excludes
+    person_excludes = set()
+    if args.exclude_person_ids_union:
+        for person_id in args.exclude_person_ids_union:
+            assets = immich_api.execute_search({"personIds": [person_id]}, "metadata")
+            all_search_assets.extend(assets)
+            person_excludes.update(get_asset_set(assets))
+
+    if args.exclude_person_ids_intersection:
+        intersection_sets = []
+        for person_id in args.exclude_person_ids_intersection:
+            assets = immich_api.execute_search({"personIds": [person_id]}, "metadata")
+            all_search_assets.extend(assets)
+            intersection_sets.append(get_asset_set(assets))
+        if intersection_sets:
+            person_excludes.update(set.intersection(*intersection_sets))
+
+    return person_includes, person_excludes
+
+def process_local_filters(args, asset_list_for_local_filtering):
+    """Processes local filters for include and exclude."""
+
+    local_filter = Filter(args.verbose)
+    local_include_union_filters = local_filter.parse_filters(
+        args.include_local_filter_union)
+    local_include_intersection_filters = local_filter.parse_filters(
+        args.include_local_filter_intersection)
+    local_exclude_union_filters = local_filter.parse_filters(
+        args.exclude_local_filter_union)
+    local_exclude_intersection_filters = local_filter.parse_filters(
+        args.exclude_local_filter_intersection)
+
+    local_include_assets = None
+    if local_include_union_filters or local_include_intersection_filters:
+        local_includes_union = local_filter.apply_local_filters(
+            asset_list_for_local_filtering, local_include_union_filters, is_include=True, use_intersection=False)
+        local_includes_intersection = local_filter.apply_local_filters(
+            asset_list_for_local_filtering, local_include_intersection_filters, is_include=True, use_intersection=True)
+
+        if local_include_union_filters and local_include_intersection_filters:
+            local_include_assets = local_includes_union.intersection(
+                local_includes_intersection)
+        elif local_include_union_filters:
+            local_include_assets = local_includes_union
+        else:
+            local_include_assets = local_includes_intersection
+
+    local_excludes_union = local_filter.apply_local_filters(
+        asset_list_for_local_filtering, local_exclude_union_filters, is_include=False, use_intersection=False)
+    local_excludes_intersection = local_filter.apply_local_filters(
+        asset_list_for_local_filtering, local_exclude_intersection_filters, is_include=False, use_intersection=True)
+    local_exclude_assets = local_excludes_union.union(
+        local_excludes_intersection)
+
+    return local_include_assets, local_exclude_assets
+
+def get_final_asset_ids(args, immich_api, all_search_assets, metadata_includes, smart_includes, person_includes, metadata_excludes, smart_excludes, person_excludes):
+    # Combine all includes
+    include_sets = [s for s in [
+        metadata_includes, smart_includes, person_includes] if s is not None]
+    if not include_sets:
+        # If no include filters are specified, start with all assets from exclude queries
+        # This is because local filters need a base set of assets to work with.
+        unique_assets_from_all = {
+            asset["id"]: asset for asset in all_search_assets}
+        final_included_assets = set(unique_assets_from_all.keys())
+    else:
+        final_included_assets = set.intersection(*include_sets)
+
+    # Process Local Filters
+    unique_assets_from_all = {
+        asset["id"]: asset for asset in all_search_assets}
+    asset_list_for_local_filtering = [unique_assets_from_all[asset_id]
+                                      for asset_id in final_included_assets if asset_id in unique_assets_from_all]
+
+    local_include_assets, local_exclude_assets = process_local_filters(
+        args, asset_list_for_local_filtering)
+
+    if local_include_assets is not None:
+        final_included_assets = final_included_assets.intersection(
+            local_include_assets)
+
+    # Combine all excludes
+    final_excluded_assets = metadata_excludes.union(
+        smart_excludes, person_excludes, local_exclude_assets)
+
+    # Final Calculation
+    final_asset_ids = final_included_assets - final_excluded_assets
+
+    return final_asset_ids
+
+def resolve_and_validate_names(args, immich_api):
+    """Fetch all people and albums to validate names early."""
+    all_people_data = None
+    if args.include_person_names_union or args.include_person_names_intersection or \
+       args.exclude_person_names_union or args.exclude_person_names_intersection:
+        all_people_data = immich_api._fetch_all_people()
+        if not all_people_data:
+            log("Could not fetch people data from Immich.", fg="red")
+            sys.exit(1)
+
+    if args.album:
+        album_id = args.album
+        uuid_regex = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        if not uuid_regex.match(album_id):
+            log(f"Album '{album_id}' is not a UUID, resolving to ID...", verbose_only=False, verbose=args.verbose)
+            resolved_album_id = immich_api.get_album_id_from_name(album_id)
+            if not resolved_album_id:
+                log(f"Album '{album_id}' not found.", fg="red")
+                sys.exit(1)
+            args.album = resolved_album_id
+
+    person_name_args = {
+        'include_person_names_union': 'include_person_ids_union',
+        'include_person_names_intersection': 'include_person_ids_intersection',
+        'exclude_person_names_union': 'exclude_person_ids_union',
+        'exclude_person_names_intersection': 'exclude_person_ids_intersection'
+    }
+    for name_arg, id_arg in person_name_args.items():
+        person_names = getattr(args, name_arg)
+        if person_names:
+            resolved_ids = []
+            unresolved_names = []
+            for name in set(person_names):
+                ids = immich_api.get_person_ids_from_names([name], all_people_data)
+                if ids:
+                    resolved_ids.extend(ids)
+                else:
+                    unresolved_names.append(name)
+            
+            if unresolved_names:
+                log(f"Could not resolve the following person names: {', '.join(unresolved_names)}. Exiting.", fg="red")
+                sys.exit(1)
+
+            setattr(args, id_arg, resolved_ids)
+
+def main():
+    args = get_config()
+
+    if not args.key or not args.server:
+        log("API key and server URL are required.", fg="red")
         return 1
-    if not args.server:
-        log("Error: Server URL is required. Set IMMICH_SERVER_URL environment variable or use --server parameter.", fg="red", verbose_only=False, verbose=args.verbose)
-        return 1
 
-    args.server = args.server.rstrip('/')
+    immich_api = ImmichAPI(args.server, args.key, args.verbose)
 
-    # NEW FEATURE: Check if no search actions are provided, then show user info
+    resolve_and_validate_names(args, immich_api)
+
     if not has_search_actions(args):
-        log("No search actions specified. Showing current user information instead.", 
+        log("No search actions specified. Displaying info.",
             verbose_only=False, verbose=args.verbose)
-        get_user_info(args.server, args.key, args.verbose)
+        immich_api.get_user_info()
+        immich_api.get_albums()
+        immich_api.get_all_users()
+        immich_api.get_people()
         return 0
 
-    # Global list to collect all assets from query searches.
     all_search_assets = []
 
-    #################################
-    # Phase 1: Build Nodes for Include & Exclude Searches
-    #################################
-    include_nodes = []
-    # Process both metadata and smart include queries.
-    for stype, group in [("metadata", meta_include), ("smart", smart_include)]:
-        for m_mode, flag in group.items():
-            query_files = getattr(args, flag.lstrip('--').replace('-', '_'))
-            node = build_query_node(query_files, stype, m_mode, args.server, args.key, args.verbose, all_search_assets)
-            if node is not None:
-                include_nodes.append(node)
-    # Phase 1 fallback: if no include queries were provided, we'll later fallback to all unique assets.
+    # Process Metadata and Smart filters
+    metadata_includes, metadata_excludes = process_query_filters(
+        "metadata", args, immich_api, all_search_assets)
+    smart_includes, smart_excludes = process_query_filters(
+        "smart", args, immich_api, all_search_assets)
 
-    exclude_nodes = []
-    # Process both metadata and smart exclude queries.
-    for stype, group in [("metadata", meta_exclude), ("smart", smart_exclude)]:
-        for m_mode, flag in group.items():
-            query_files = getattr(args, flag.lstrip('--').replace('-', '_'))
-            node = build_query_node(query_files, stype, m_mode, args.server, args.key, args.verbose, all_search_assets)
-            if node is not None:
-                exclude_nodes.append(node)
+    # Process Person name filters
+    person_includes, person_excludes = process_person_filters(
+        args, immich_api, all_search_assets)
 
-    #################################
-    # Phase 2: Unique Assets Collection (from all queries)
-    #################################
-    unique_assets_from_all = {}
-    for asset in all_search_assets:
-        unique_assets_from_all[asset["id"]] = asset
-    log(f"Collected {len(unique_assets_from_all)} unique assets from all search queries", verbose_only=True, verbose=args.verbose)
+    final_asset_ids = get_final_asset_ids(args, immich_api, all_search_assets, metadata_includes, smart_includes, person_includes, metadata_excludes, smart_excludes, person_excludes)
 
-    #################################
-    # Phase 3: Process Local Filters
-    #################################
-    asset_list = list(unique_assets_from_all.values())
-    local_filters = {
-        "include": {
-            "union": parse_filters(getattr(args, local_include["union"].lstrip('--').replace('-', '_')), args.verbose),
-            "intersection": parse_filters(getattr(args, local_include["intersection"].lstrip('--').replace('-', '_')), args.verbose)
-        },
-        "exclude": {
-            "union": parse_filters(getattr(args, local_exclude["union"].lstrip('--').replace('-', '_')), args.verbose),
-            "intersection": parse_filters(getattr(args, local_exclude["intersection"].lstrip('--').replace('-', '_')), args.verbose)
-        }
-    }
-    local_include_filters_provided = bool(local_filters["include"]["union"] or local_filters["include"]["intersection"])
-    local_include_union = apply_filters(asset_list, local_filters["include"]["union"], is_include=True, use_intersection=False, verbose=args.verbose) if local_filters["include"]["union"] else set()
-    local_include_intersection = apply_filters(asset_list, local_filters["include"]["intersection"], is_include=True, use_intersection=True, verbose=args.verbose) if local_filters["include"]["intersection"] else set()
-    if local_include_union and local_include_intersection:
-        local_include_result = local_include_union.intersection(local_include_intersection)
-        log(f"Local include filter result (union ∩ intersection): {len(local_include_result)} assets", verbose_only=False, verbose=args.verbose)
-    elif local_include_union:
-        local_include_result = local_include_union
-        log(f"Local include filter union result: {len(local_include_result)} assets", verbose_only=False, verbose=args.verbose)
-    elif local_include_intersection:
-        local_include_result = local_include_intersection
-        log(f"Local include filter intersection result: {len(local_include_result)} assets", verbose_only=False, verbose=args.verbose)
-    else:
-        local_include_result = set()
+    log(f"Final merged asset IDs after applying all criteria: {len(final_asset_ids)} assets",
+        verbose_only=False, verbose=args.verbose)
 
-    local_exclude_union = apply_filters(asset_list, local_filters["exclude"]["union"], is_include=False, use_intersection=False, verbose=args.verbose) if local_filters["exclude"]["union"] else set()
-    local_exclude_intersection = apply_filters(asset_list, local_filters["exclude"]["intersection"], is_include=False, use_intersection=True, verbose=args.verbose) if local_filters["exclude"]["intersection"] else set()
-    local_exclude_result = local_exclude_union.union(local_exclude_intersection)
-    if local_exclude_result:
-        log(f"Local exclude filter result: {len(local_exclude_result)} assets", verbose_only=False, verbose=args.verbose)
-
-    #################################
-    # Phase 4: Build Final Merging Structure
-    #################################
-    # For the include branch, if no include query nodes were provided, fallback to all unique assets.
-    if not include_nodes:
-        include_nodes.append({"mode": "intersection", "results": {"all": set(unique_assets_from_all.keys())}})
-    # Also add local include filter node if available.
-    if local_include_filters_provided:
-        include_nodes.append({"mode": "intersection", "results": {"local": local_include_result}})
-    include_branch = {"mode": "intersection", "children": include_nodes}
-
-    # For the exclude branch, combine any exclude query nodes and add local exclude node.
-    if not exclude_nodes:
-        exclude_nodes.append({"mode": "union", "results": {"none": set()}})
-    if local_exclude_result:
-        exclude_nodes.append({"mode": "union", "results": {"local_exclude": local_exclude_result}})
-    exclude_branch = {"mode": "union", "children": exclude_nodes}
-
-    # Final structure subtracts exclude branch from include branch.
-    final_structure = {"mode": "minus", "children": [include_branch, exclude_branch]}
-    final_asset_ids = compute_merged(final_structure)
-    log(f"Final merged asset IDs after applying all criteria: {len(final_asset_ids)} assets", verbose_only=False, verbose=args.verbose)
-
-    # import reprlib
-    # print(reprlib.repr(final_structure))
-
-    #################################
-    # Phase 5: Apply Limit and Finalize Output
-    #################################
     if final_asset_ids and args.max_assets and len(final_asset_ids) > args.max_assets:
-        log(f"Limiting to {args.max_assets} assets (from {len(final_asset_ids)})", verbose_only=False, verbose=args.verbose)
+        log(f"Limiting to {args.max_assets} assets (from {len(final_asset_ids)})",
+            verbose_only=False, verbose=args.verbose)
         final_asset_ids = set(list(final_asset_ids)[:args.max_assets])
 
     if final_asset_ids:
-        log(f"\nFinal assets selected: {len(final_asset_ids)}", verbose_only=False, verbose=args.verbose)
+        log(f"\nFinal assets selected: {len(final_asset_ids)}",
+            verbose_only=False, verbose=args.verbose)
         if not args.album:
-            for aid in final_asset_ids:
-                log(f"{args.server}/photos/{aid}", verbose_only=False, verbose=args.verbose)
+            for aid in sorted(list(final_asset_ids)):
+                log(f"{immich_api.server_url}/photos/{aid}",
+                    verbose_only=False, verbose=args.verbose)
         else:
-            add_assets_to_album(args.server, args.key, args.album, final_asset_ids, verbose=args.verbose)
+            album_id = args.album
+            if album_id:
+                immich_api.add_assets_to_album(album_id, final_asset_ids)
     else:
-        log("No assets matched all criteria.", fg="yellow", verbose_only=False, verbose=args.verbose)
+        log("No assets matched all criteria.", fg="yellow",
+            verbose_only=False, verbose=args.verbose)
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

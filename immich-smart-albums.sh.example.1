@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# This script provides generic examples of how to run the immich-smart-albums.py application.
+# It assumes that IMMICH_SERVER_URL and IMMICH_API_KEY are defined in a .env file
+# in the project root directory.
+
+# Load environment variables from .env for the shell script
+set -a
+if [ -f ./.env ]; then
+    . ./.env
+else
+    echo "Error: .env file not found. Please create one with IMMICH_SERVER_URL and IMMICH_API_KEY."
+    exit 1
+fi
+set +a
+
+# --- Configuration Variables (read from .env) ---
+# IMMICH_SERVER_URL: Your Immich server URL (e.g., http://localhost:2283)
+# IMMICH_API_KEY: Your Immich API Key
+
+# --- Person Name Variables (customize these) ---
+PERSON1_NAME="Jane Doe"
+PERSON2_NAME="John Doe"
+PERSON3_NAME="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+
+mkdir -p my_filters
+
+# First, create the filter file if it doesn't exist
+echo '{ "takenAfter": "2023-10-01T00:00:00.000Z", "takenBefore": "2023-12-31T23:59:59.999Z" }' > my_filters/metadata-2023-Q4.json
+echo '{ "takenAfter": "2025-06-01T00:00:00.000Z", "takenBefore": "2025-08-31T23:59:59.999Z" }' > my_filters/summer-2025.json
+echo '[ { "path": "$.exifInfo.iso", "regex": "^(?:1600|16[1-9]\\d|1[7-9]\\d{2}|[2-9]\\d{3,})$" } ]' > my_filters/localfilter-highiso.json
+echo '[{"path": "$.originalPath", "regex": "^/photos/work_projects/.*"}]' > my_filters/localfilter-no-work-photos.json
+
+# --- Example Usage ---
+
+echo "--- 1. Verify Connectivity and List Immich Info ---"
+echo "This command connects to Immich and prints user profile, album list, and named faces."
+python3 immich-smart-albums.py
+echo ""
+
+echo "--- 2. Preview Assets with Smart Search (e.g., 'dog') ---"
+echo "This command previews assets matching 'dog' without modifying any albums."
+python3 immich-smart-albums.py --max-assets 10 --include-smart-union "dog"
+echo ""
+
+echo "--- 3. Preview Assets for a Specific Person (by name) ---"
+echo "This command previews assets of '$PERSON1_NAME' and '$PERSON2_NAME'."
+# Ensure names are recognized persons in your Immich instance.
+python3 immich-smart-albums.py --max-assets 10 --include-person-names-union "$PERSON1_NAME" "$PERSON2_NAME"
+echo ""
+
+echo "--- 4. Preview Assets for 'Summer 2025' using a metadata filter file ---"
+echo "This command previews assets for 'Summer 2025'."
+python3 immich-smart-albums.py --max-assets 10 --include-metadata-union my_filters/summer-2025.json
+echo ""
+
+echo "--- 5.1. Preview Assets for 'Dogs (No Cats)' using smart search exclusion ---"
+echo "This command previews assets matching 'dog' but excludes those also containing 'cat'."
+python3 immich-smart-albums.py --max-assets 10 --include-smart-union "dog" --exclude-smart-union "cat"  --default-smart-result-limit=500
+echo ""
+
+echo "--- 5.2. Preview Assets for 'Dogs (No Cats)' with specific result limits ---"
+echo "This command previews assets of 'dog' (up to 600 candidates) and excludes 'cat' (up to 300 candidates)."
+echo "Using specific limits (@ notation) helps avoid false positives when one category has fewer results."
+python3 immich-smart-albums.py --max-assets 10 --include-smart-union "dog@600" --exclude-smart-union "cat@300"
+
+echo "--- 5.3. Preview Assets for 'Dogs and Cats Together' using smart search intersection ---"
+echo "This command previews assets where 'dog' and 'cat' appear in the same image."
+python3 immich-smart-albums.py --max-assets 10 --include-smart-intersection "dog@600" "cat@300"
+echo ""
+
+echo "--- 6. Preview Assets for 'High ISO Photos' using a local filter file ---"
+echo "This command previews assets on 2023-Q4 with an ISO higher than 1600."
+python3 immich-smart-albums.py --max-assets 10 --include-metadata-union my_filters/metadata-2023-Q4.json --include-local-filter-union my_filters/localfilter-highiso.json
+echo ""
+
+echo "--- 7. Combined Example: Preview Jane's Assets (Post 2020, No Work Photos) ---"
+echo "This command combines person, metadata, and local filters to preview assets."
+
+python3 immich-smart-albums.py --max-assets 10 \
+  --include-person-names-union "$PERSON1_NAME" \
+  --include-metadata-union '{"takenAfter": "2021-01-01T00:00:00.000Z"}' \
+  --exclude-local-filter-union my_filters/localfilter-no-work-photos.json
+echo ""
+
+echo "--- Examples Finished ---"

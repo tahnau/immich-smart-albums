@@ -1,435 +1,249 @@
 # Immich Smart Albums
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-<!-- Optional: Add build status, version badges etc. if you have them -->
+This utility empowers you to create dynamic photo albums in your [Immich](https://immich.app/) instance. It leverages Immich's search capabilities (both metadata and AI-powered smart search) and adds powerful local filtering to help you organize your photos exactly the way you want.
 
-Automatically create and update dynamic photo albums in your [Immich](https://immich.app/) instance based on powerful search criteria.
+## The Story: Building the Perfect Album
 
-This Python utility uses Immich's native search capabilities (metadata and AI-powered smart search) along with optional custom local filters (JSONPath/regex) to keep your albums perfectly organized.
+Let's embark on a journey to create highly curated photo albums in Immich, starting simple and progressively adding more sophisticated filtering.
 
-## Features
+### Chapter 1: Curating by People – From Individuals to Groups
 
-*   **Automated Album Management:** Define rules once, and the script keeps your albums updated.
-*   **Leverage Immich Search:** Utilizes built-in metadata search (dates, locations, people) and AI smart search (objects, scenes, concepts).
-*   **Fine-Grained Local Filtering:** Apply JSONPath and regex rules to asset metadata (camera model, filename, EXIF tags, etc.).
-*   **Flexible Logic:** Combine multiple include and exclude rules using AND/OR logic.
-*   **Non-Destructive:** Only *adds* assets to albums; never deletes assets or modifies existing album content (unless you re-run with different rules).
-*   **Preview Mode:** See which assets *would* be added before committing.
-*   **Automation Ready:** Easily run via cron or other schedulers.
-
-## Getting Started
-
-Let's get you up and running quickly!
-
-### 1. Requirements
-
-*   Python 3.6+
-*   An Immich server instance
-*   An Immich API Key
-
-### 2. Installation
+Our first goal is to create an album for our friend, **Jane Doe**. We can easily do this by including her name:
 
 ```bash
-# Clone the repository
-git clone https://github.com/tahnau/immich-smart-albums.git
-cd immich-smart-albums
-
-# Install required Python packages
-pip3 install requests jsonpath_ng
+python3 immich-smart-albums.py --include-person-names-union "Jane Doe" --album "Jane's Album"
 ```
+(Note: If a person is not named in Immich, you can use their person ID (UUID). Similarly, you can refer to album UUIDs directly. Used names and UUIDs must exist.)
 
-### 3. Configuration
-
-The script needs your Immich server URL and an API key.
-
-*   **Server URL:** The web address of your Immich instance (e.g., `https://immich.example.com`).
-*   **API Key:** Generate one from your Immich User Settings -> API Keys.
-
-You can provide these via environment variables (recommended) or command-line arguments:
+Now, let's expand our circle to include all our friends: **Jane Doe**, **John Smith**, and **Peter Pan**. We can simply add their names to the command to create a "Friends" album:
 
 ```bash
-# Recommended: Set Environment Variables
-export IMMICH_SERVER_URL="https://your-immich.example.com"
-export IMMICH_API_KEY="paste_your_long_api_key_here"
-
-# Alternatively, use --server and --key flags in commands
+python3 immich-smart-albums.py --include-person-names-union "Jane Doe" "John Smith" "Peter Pan" --album "Friends"
 ```
 
-### 4. Your First Run (Simple Examples)
+But what if we want an album that *only* shows photos where **Jane Doe and John Smith are together**? For this, we use the `include-person-names-intersection` flag:
 
-It's best to start in **preview mode** (without the `--album` flag) to see what the script finds before adding anything to an album.
+```bash
+python3 immich-smart-albums.py --include-person-names-intersection "Jane Doe" "John Smith" --album "Jane and John Together"
+```
 
-**Example 1: Preview Photos from Summer 2023**
+Finally, to refine our "Friends" album, let's exclude any photos where John Smith appears with his ex, **Mary Poppins**. We can achieve this by combining our union of friends with an `exclude-person-names-intersection`:
 
-First, create a simple filter file named `filters/summer-2023.json`:
+```bash
+python3 immich-smart-albums.py \
+  --include-person-names-union "Jane Doe" "John Smith" "Peter Pan" \
+  --exclude-person-names-intersection "John Smith" "Mary Poppins" \
+  --album "Friends (No Exes)"
+```
+This demonstrates how you can precisely control who appears in your albums.
+
+### Chapter 2: Time-Traveling with Dates and Metadata
+
+Beyond people, dates are crucial for organizing memories. Let's refine "Jane's Album" to only include photos taken **after 2020**. We can add a metadata filter directly to our command:
+
+```bash
+python3 immich-smart-albums.py \
+  --include-person-names-union "Jane Doe" \
+  --include-metadata-union '{"takenAfter": "2021-01-01T00:00:00.000Z"}' \
+  --album "Jane's Album (Post 2020)"
+```
+
+We can also exclude specific periods. For instance, to exclude all photos from 2022 from Jane's album, we combine an `exclude-metadata-union` filter:
+
+```bash
+python3 immich-smart-albums.py \
+  --include-person-names-union "Jane Doe" \
+  --include-metadata-union '{"takenAfter": "2021-01-01T00:00:00.000Z"}' \
+  --exclude-metadata-union '{"takenAfter": "2022-01-01T00:00:00.000Z", "takenBefore": "2022-12-31T23:59:59.999Z"}' \
+  --album "Jane's Album (Post 2020, No 2022)"
+```
+
+For more complex or reusable date ranges, you can define them in a JSON file. For example, to create an album for "Summer 2025", first create `filters/summer-2025.json`:
 
 ```json
-// filters/summer-2023.json
 {
-  "takenAfter": "2023-06-01T00:00:00.000Z",
-  "takenBefore": "2023-08-31T23:59:59.999Z"
+  "takenAfter": "2025-06-01T00:00:00.000Z",
+  "takenBefore": "2025-08-31T23:59:59.999Z"
 }
 ```
-
-Now, run the script to *preview* the results:
-
+Then, run the script:
 ```bash
-python3 immich-smart-albums.py \
-  --include-metadata-union filters/summer-2023.json \
-  --verbose # Optional: Shows more detail
+python3 immich-smart-albums.py --include-metadata-union filters/summer-2025.json --album "Summer 2025"
 ```
 
-This command uses the Immich metadata search to find photos taken between June 1st and August 31st, 2023, and prints the matching asset IDs. No album is modified.
+### Chapter 3: Advanced Filtering with Local Filters
 
-**Example 2: Add Beach Photos to an Album**
+Sometimes, Immich's API doesn't expose all the properties we need for filtering. This is where **local filters** shine, allowing you to filter on asset data like `originalPath` using JSONPath and regular expressions. These filters are applied *after* the initial Immich API calls.
 
-Create a filter file `filters/beach.json`:
+Let's say we want to ensure no work-related photos from `/photos/work_projects/` appear in Jane's personal album. First, define this filter in `filters/localfilter-no-work-photos.json`:
 
 ```json
-// filters/beach.json
-{
-  "query": "beach",
-  "resultLimit": 200 // Good practice to limit smart search results
-}
-```
-
-First, preview:
-
-```bash
-python3 immich-smart-albums.py \
-  --include-smart-union filters/beach.json
-```
-
-If the preview looks good, find the **Album ID** for your target album. Go to the album in the Immich web UI, and copy the UUID from the URL (e.g., `.../albums/THIS_PART_IS_THE_ID`).
-
-Now, run the command again, adding the `--album` flag:
-
-```bash
-# Replace YOUR_ALBUM_ID with the actual ID
-python3 immich-smart-albums.py \
-  --include-smart-union filters/beach.json \
-  --album YOUR_ALBUM_ID
-```
-
-This command uses Immich's AI smart search to find photos matching "beach" and adds them to the specified album.
-
-## How It Works (Conceptual Overview)
-
-The script determines which assets to add to an album by following these steps:
-
-1.  **Identify Potential Assets (Include Rules):**
-    *   It fetches assets matching your `--include-*` rules. You can filter by:
-        *   **Metadata:** Dates, locations, people, camera info (via `--include-metadata-*`).
-        *   **Smart Search:** AI-based content recognition (via `--include-smart-*`).
-        *   **Local Filters:** Custom JSONPath/regex rules on asset details (via `--include-local-filter-*`).
-    *   Assets must match the combined criteria of *all* specified include categories (Metadata AND Smart AND Local). Within each category, you can use Union (OR logic) or Intersection (AND logic).
-
-2.  **Remove Unwanted Assets (Exclude Rules):**
-    *   It then removes any assets identified in step 1 that *also* match any of your `--exclude-*` rules.
-    *   Exclusion works similarly, using Metadata, Smart, and Local filters. If an asset matches *any* exclude rule, it's removed (OR logic across categories).
-
-3.  **Add to Album:**
-    *   The remaining assets are added to the specified `--album` (if provided).
-
-*(See the "Advanced Filtering Logic" section below for the precise technical details.)*
-
-## More Examples
-
-Here are examples demonstrating more complex filtering:
-
-*(Assumes `IMMICH_SERVER_URL` and `IMMICH_API_KEY` are set as environment variables)*
-
-**Example 3: Find Photos with Mountains AND Beach (Intersection)**
-
-Create `filters/mountains.json` and `filters/beach.json` (as shown above).
-
-```bash
-# Uses smart search intersection: Must match BOTH queries
-python3 immich-smart-albums.py \
-  --include-smart-intersection filters/mountains.json filters/beach.json \
-  --album mountain-beach-scenes-album-id
-```
-
-```json
-// filters/mountains.json
-{ "query": "mountains", "resultLimit": 100 }
-```
-
-**Example 4: Find Photos with Mountains OR Beach (Union)**
-
-```bash
-# Uses smart search union: Must match EITHER query
-python3 immich-smart-albums.py \
-  --include-smart-union filters/mountains.json filters/beach.json \
-  --album mountain-or-beach-scenes-album-id
-```
-
-**Example 5: Exclude People from Mountain Photos**
-
-Create `filters/people.json`.
-
-```bash
-# Include mountains, but exclude photos containing people
-python3 immich-smart-albums.py \
-  --include-smart-union filters/mountains.json \
-  --exclude-smart-union filters/people.json \
-  --album mountains-no-people-album-id
-```
-
-```json
-// filters/people.json
-{ "query": "person", "resultLimit": 500 } // Might need a higher limit for exclusion
-```
-
-**Example 6: Combine Filter Types (Beach Photos from Summer 2023)**
-
-Uses the `filters/beach.json` and `filters/summer-2023.json` files from earlier examples.
-
-```bash
-# Assets must match BOTH the smart search ("beach") AND the metadata search (date range)
-python3 immich-smart-albums.py \
-  --include-smart-union filters/beach.json \
-  --include-metadata-union filters/summer-2023.json \
-  --album summer-beach-2023-album-id
-```
-
-**Example 7: Use Local Filters (iPhone Photos Only)**
-
-Requires a metadata or smart search filter to be active first. Let's find all photos (using a wide date range as a proxy) and then filter locally for Apple devices.
-
-Create `filters/all-time.json` and `filters/local-apple.json`.
-
-```json
-// filters/all-time.json
-{ "takenAfter": "1970-01-01T00:00:00.000Z" } // Or adjust as needed
-```
-
-```json
-// filters/local-apple.json
 [
-  {
-    "path": "$.exifInfo.make",
-    "regex": "Apple",
-    "description": "Photos taken with any Apple device"
-  }
+  {"path": "$.originalPath", "regex": "^/photos/work_projects/.*"}
 ]
 ```
+Then, integrate it into your command:
 
 ```bash
 python3 immich-smart-albums.py \
-  --include-metadata-union filters/all-time.json \
-  --include-local-filter-intersection filters/local-apple.json \
-  --album apple-photos-album-id
+  --include-person-names-union "Jane Doe" \
+  --include-metadata-union '{"takenAfter": "2021-01-01T00:00:00.000Z"}' \
+  --exclude-local-filter-union filters/localfilter-no-work-photos.json \
+  --album "Jane's Album (No Work Photos)"
 ```
-**Example 8: Photos of Person A and B Together (Excluding Person C)**
+(Note: Local filters are applied to assets already selected by other API calls. If you want to filter an entire library by `originalPath`, you might need a broad initial filter like `metadata-all-photos.json` to fetch all assets first, which can be slow.)
 
-This example creates an album containing only photos where Person A and Person B appear *together*, but specifically excludes any photos where Person C is *also* present. This uses Immich's metadata search for people.
+### Chapter 4: Intelligent Curation with Smart Search
 
-**1. Find Person UUIDs:**
+Immich's AI-powered smart search allows for content-based filtering. Let's create an album of all photos that have **dogs** in them:
 
-   Go to the "Explore" -> "People" section in your Immich web UI. Click on each person (A, B, and C). The UUID is the part of the URL after `/people/`.
-
-   *   `https://your-immich.example.com/people/UUID_FOR_PERSON_A` -> Copy `UUID_FOR_PERSON_A`
-   *   `https://your-immich.example.com/people/UUID_FOR_PERSON_B` -> Copy `UUID_FOR_PERSON_B`
-   *   `https://your-immich.example.com/people/UUID_FOR_PERSON_C` -> Copy `UUID_FOR_PERSON_C`
-
-**2. Create Filter Files:**
-
-   *   **Method 1 (Recommended & Efficient): Single "Include" File**
-
-     Create `filters/people-A-and-B.json`. This file tells Immich to find photos containing *both* Person A AND Person B in a single API query. Immich's API natively handles the AND logic when multiple IDs are provided in the `personIds` array.
-
-     ```json
-     // filters/people-A-and-B.json
-     {
-       "personIds": ["UUID_FOR_PERSON_A", "UUID_FOR_PERSON_B"]
-     }
-     ```
-     *(Replace the placeholders with the actual UUIDs you found)*
-
-   *   **Method 2 (Illustrates Script Intersection): Separate "Include" Files**
-
-     Alternatively, to explicitly use the script's intersection logic, you could create two separate files. This requires two separate API calls instead of one, so Method 1 is generally preferred.
-
-     Create `filters/person-A.json`:
-     ```json
-     // filters/person-A.json
-     { "personIds": ["UUID_FOR_PERSON_A"] }
-     ```
-
-     Create `filters/person-B.json`:
-     ```json
-     // filters/person-B.json
-     { "personIds": ["UUID_FOR_PERSON_B"] }
-     ```
-     When using these separate files, you would use the `--include-metadata-intersection` flag in the command instead of `--include-metadata-union`. This tells the script to fetch assets matching Person A, fetch assets matching Person B, and then find the intersection (assets present in *both* results).
-
-   *   **Exclusion File (Same for both methods):**
-
-     Create `filters/person-C.json` to identify photos containing Person C.
-
-     ```json
-     // filters/person-C.json
-     {
-       "personIds": ["UUID_FOR_PERSON_C"]
-     }
-     ```
-     *(Replace the placeholder with the actual UUID you found)*
-
-**3. Find Album ID:**
-
-   Create or navigate to the target album in Immich. Copy the UUID from the album's URL (e.g., `.../albums/YOUR_ALBUM_ID`).
-
-**4. Run the Command:**
-
-   *   **Using Method 1 (Recommended):**
-
-     ```bash
-     # Replace YOUR_ALBUM_ID with the actual Album ID
-     python3 immich-smart-albums.py \
-       --include-metadata-union filters/people-A-and-B.json \
-       --exclude-metadata-union filters/person-C.json \
-       --album YOUR_ALBUM_ID \
-       --verbose
-     ```
-     *(Note: We use `--include-metadata-union` here because we only have one include file. The AND logic is handled *inside* that file by the Immich API.)*
-
-   *   **Using Method 2 (Illustrative):**
-
-     ```bash
-     # Replace YOUR_ALBUM_ID with the actual Album ID
-     python3 immich-smart-albums.py \
-       --include-metadata-intersection filters/person-A.json filters/person-B.json \
-       --exclude-metadata-union filters/person-C.json \
-       --album YOUR_ALBUM_ID \
-       --verbose
-     ```
-     *(Note: Here we explicitly use `--include-metadata-intersection` to combine the results of the two separate include files.)*
-
-**Explanation:**
-
-*   **Include Logic:**
-    *   Method 1: Uses a single API call efficiently asking for "A AND B".
-    *   Method 2: Uses two API calls ("find A", "find B") and the script calculates the intersection (assets matching *both*).
-*   **Exclude Logic:** `--exclude-metadata-union filters/person-C.json` identifies all assets where Person C is present.
-*   **Final Result:** The script takes the included set (A AND B) and removes any assets that were also found by the exclude rule (containing C). The remaining assets (Photos with A & B, but *not* C) are added to the specified album.
-
-
-## Understanding Filter Files (.json)
-
-You define your search criteria in simple JSON files.
-
-*   **Metadata Filters (`--*-metadata-*`)**: Use fields from the Immich `/search/metadata` API endpoint. Common fields: `takenAfter`, `takenBefore`, `city`, `state`, `country`, `make`, `model`, `personIds`.
-    *   Example: `filters/summer-2023.json` (shown above)
-    *   Example: Find photos with specific people: `{ "personIds": ["uuid-of-person1", "uuid-of-person2"] }`
-*   **Smart Filters (`--*-smart-*`)**: Use fields from the Immich `/search` API endpoint (often called smart search). Key field: `query`. Always include `resultLimit`.
-    *   Example: `filters/beach.json` (shown above)
-*   **Local Filters (`--*-local-filter-*`)**: An array of JSONPath/regex rules applied *after* fetching assets via Metadata/Smart search. Each rule needs a `path` (using [JSONPath syntax](https://goessner.net/articles/JsonPath/)) and a `regex`.
-    *   Example: `filters/local-apple.json` (shown above)
-    *   Example: Find only `.JPG` files: `[{"path": "$.originalPath", "regex": "\\.jpe?g$", "description": "JPEG files only"}]`
-    *   See the "Available Fields for Local Filters" section below for details on what data you can query.
-
-## Command-Line Parameters
-
-```
-# Include parameters (OR logic within category)
---include-metadata-union <file1.json> [file2.json...]
---include-smart-union <file1.json> [file2.json...]
---include-local-filter-union <file1.json> [file2.json...]
-
-# Include parameters (AND logic within category)
---include-metadata-intersection <file1.json> [file2.json...]
---include-smart-intersection <file1.json> [file2.json...]
---include-local-filter-intersection <file1.json> [file2.json...]
-
-# Exclude parameters (Assets matching ANY listed file in UNION are flagged for exclusion)
---exclude-metadata-union <file1.json> [file2.json...]
---exclude-smart-union <file1.json> [file2.json...]
---exclude-local-filter-union <file1.json> [file2.json...]
-
-# Exclude parameters (Assets matching ALL listed files in INTERSECTION are flagged for exclusion)
---exclude-metadata-intersection <file1.json> [file2.json...]
---exclude-smart-intersection <file1.json> [file2.json...]
---exclude-local-filter-intersection <file1.json> [file2.json...]
-
-# Common parameters
---server      Immich server URL (or use IMMICH_SERVER_URL env var)
---key         Immich API Key (or use IMMICH_API_KEY env var)
---album       UUID of the target album (omit for preview mode)
---max-assets  Limit the total number of assets added in one run (optional)
---verbose     Enable detailed logging output
---help        Show help message with all options
+```bash
+python3 immich-smart-albums.py --include-smart-union "dog" --album "Dogs"
 ```
 
-## Advanced Filtering Logic
+Immich's smart search results are sorted by their match ratio. If you have many photos and want to retrieve a specific number of the most relevant "dog" photos, or if you have very few and want to ensure you get all available matches, you can adjust the number of items retrieved using the `@amount` filter. For example, to retrieve up to 500 "dog" photos:
 
-*(This section contains the detailed technical explanation of how filters are combined.)*
-
-The script uses a precise order of operations to determine the final set of assets:
-
-1.  **Calculate Initial Include Pool:**
-    *   For each category (Metadata, Smart, Local) where `--include-*` flags are used:
-        *   Calculate the result of `--include-*-union` filters (Union/OR logic).
-        *   Calculate the result of `--include-*-intersection` filters (Intersection/AND logic).
-        *   The category's result is the **intersection** of its Union result and its Intersection result. (If only one type of flag is used, the other defaults to `ALL` assets).
-    *   If *no* include flags are used for an entire category, it defaults to `ALL` assets.
-    *   The final `Include_Pool` is the **intersection** of the results from all three categories:
-        `Include_Pool = Metadata_Result ∩ Smart_Result ∩ Local_Result`
-    *   *Local Filter Dependency:* Local include filters are only evaluated if at least one Metadata or Smart include filter is also specified. Otherwise, `Local_Result` defaults to `ALL`.
-
-2.  **Calculate Exclusion Pool:**
-    *   For each category (Metadata, Smart, Local) where `--exclude-*` flags are used:
-        *   Calculate the result of `--exclude-*-union` filters.
-        *   Calculate the result of `--exclude-*-intersection` filters.
-        *   The assets flagged for exclusion by this category are the **union** of its Union result and its Intersection result. (If a flag is omitted, its contribution is `∅` - empty set).
-    *   The final `Exclude_Pool` is the **union** of the flagged assets from all three categories:
-        `Exclude_Pool = Metadata_Exclude ∪ Smart_Exclude ∪ Local_Exclude`
-
-3.  **Determine Final Asset Set:**
-    *   The assets to be added to the album are those in the `Include_Pool` that are *not* in the `Exclude_Pool` (set difference):
-        `Final Album Assets = Include_Pool − Exclude_Pool`
-
-4.  **Apply Max Assets Limit:**
-    *   If `--max-assets` is specified, the list is truncated to that size.
-
-**Visual Representation:**
-
+```bash
+python3 immich-smart-albums.py --include-smart-union "dog@500" --album "Dogs (Top 500)"
 ```
-immich-smart-albums: Operation Tree
 
-Legend:
-  ∩ : Intersection (AND)
-  ∪ : Union (OR)
-  − : Set Difference (Subtract)
-  ALL: Represents the set of all assets (used as a default).
-  ∅ : Represents the empty set (used as a default).
-  A.json, B.json, ... : Filter definition files.
+For the discerning dog lover, we might want to exclude any dog photos that *also* contain **cats**:
 
-───────────────────────────────────────────────────────────────────────────────
- INCLUDE Ruleset (Determines the initial asset pool via Intersection)
- Rule: An asset MUST satisfy the intersection (∩) of the results from ALL specified categories.
-───────────────────────────────────────────────────────────────────────────────
-  ├─ Metadata (Include) → Metadata_Result (Defaults to ALL if no flags used)
-  ├─ Smart (Include)    → Smart_Result (Defaults to ALL if no flags used)
-  └─ Local (Include)    → Local_Result (Defaults to ALL if no flags used OR dependency not met)
-
-  ▸ Include_Pool = Metadata_Result ∩ Smart_Result ∩ Local_Result
-───────────────────────────────────────────────────────────────────────────────
- EXCLUDE Ruleset (Removes assets from the initial pool via Union)
- Rule: An asset is REMOVED if it matches the union (∪) of ANY specific exclude condition.
-───────────────────────────────────────────────────────────────────────────────
-  ├─ Metadata (Exclude) → Metadata_Exclude (Defaults to ∅ if no flags used)
-  ├─ Smart (Exclude)    → Smart_Exclude (Defaults to ∅ if no flags used)
-  └─ Local (Exclude)    → Local_Exclude (Defaults to ∅ if no flags used)
-
-  ▸ Exclude_Pool = Metadata_Exclude ∪ Smart_Exclude ∪ Local_Exclude
-───────────────────────────────────────────────────────────────────────────────
- FINAL ASSET SET Calculation
-───────────────────────────────────────────────────────────────────────────────
-  Final Album Assets = Include_Pool − Exclude_Pool
-  (Optional: Apply --max-assets limit)
-───────────────────────────────────────────────────────────────────────────────
+```bash
+python3 immich-smart-albums.py --include-smart-union "dog" --exclude-smart-union "cat" --album "Dogs (No Cats)"
 ```
+(Smart search queries can also be provided via JSON files for more complex or reusable queries.)
+
+## Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/tahnau/immich-smart-albums.git
+    cd immich-smart-albums
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    pip3 install -r requirements.txt
+    ```
+
+## Configuration
+
+The script requires your Immich server URL and API key. These can be provided in one of three ways (in order of precedence):
+
+1.  **Command-line arguments:** Use the `--server` and `--key` flags.
+2.  **Environment variables:** Set the `IMMICH_SERVER_URL` and `IMMICH_API_KEY` environment variables.
+3.  **.env file:** Create a `.env` file in the project root. You can copy the example file and edit it:
+    ```bash
+    cp .env.example .env
+    ```
+    Then, add your credentials to the `.env` file.
+
+## Docker Usage
+
+This project provides a `Dockerfile` and `docker-compose.yml` to easily run the `immich-smart-albums` utility in a containerized environment.
+
+### Configuration for Docker
+
+The Docker setup is designed to use the `.env` file located in the project root for your Immich server URL and API key.
+
+**Important Note on `IMMICH_SERVER_URL`:**
+When running inside Docker, `localhost` refers to the container itself, not your host machine. You have two primary options for configuring the Immich server address:
+
+1.  **Overriding in `docker-compose.yml`:**
+    You can explicitly set the `IMMICH_SERVER_URL` in `docker-compose.yml`. This will override any value set in `.env` for the container.
+
+    To find your Docker host IP on Linux, you might use `ip addr show docker0` or `ifconfig docker0`.
+
+2.  **Using `host.docker.internal` (Recommended for Docker Desktop):**
+    Edit your project's `.env` file to set `IMMICH_SERVER_URL` to `http://host.docker.internal:2283` (or your Immich port). This special hostname resolves to your host machine's IP from within the Docker container.
+
+### Running with Docker Compose
+
+1.  **Build the Docker image:**
+    ```bash
+    docker compose build
+    ```
+
+2.  **Run the application:**
+    The entire project folder is copied into the Docker environment, making `my_filters` configurations directly available.
+
+    To run the application and print user profile details, album list, and named faces:
+    ```bash
+    docker compose run immich-smart-albums
+    ```
+
+3.  **Using filters and arguments:**
+    Pass arguments to the script by appending them to the `docker compose run` command. For example, to use a smart filter:
+    ```bash
+    docker compose run immich-smart-albums --include-smart-intersection my_filters/smart-dog.json
+    ```
+
+### Running Custom Scripts
+
+To execute custom shell scripts from the project root within the Docker container (e.g., `my_custom_script.sh`):
+```bash
+docker compose run immich-smart-albums bash -c "./my_custom_script.sh"
+```
+
+## Usage
+
+The main script is `immich-smart-albums.py`. It is highly configurable via command-line arguments.
+
+**Recommended Workflow:**
+
+1.  **Verify Connectivity (No Arguments):**
+    It is highly recommended to first run the script without any arguments. This will attempt to connect to your Immich instance using the configured `IMMICH_SERVER_URL` and `IMMICH_API_KEY` (from `.env` or environment variables). A successful run will print your user profile details, album list, and named faces, confirming that your setup is correct and the application can access Immich.
+
+    ```bash
+    python3 immich-smart-albums.py
+    ```
+    (If using Docker: `docker compose run immich-smart-albums`)
+
+2.  **Preview Mode (Simple Search):**
+    Once connectivity is verified, you can start experimenting with filters in preview mode (by omitting the `--album` flag). This allows you to see which assets will be selected without modifying any albums. For example, to preview assets matching a smart search for "cat":
+
+    ```bash
+    python3 immich-smart-albums.py --include-smart-union "cat"
+    ```
+
+3.  **Adding to an Album (Persistence):**
+    Once you are satisfied with the preview results, you can specify an album to add the assets to using the `--album` flag. Without the `--album` parameter, the script performs no persistent changes. When the `--album` parameter is used, the script will only add new items to the specified album.
+    ```bash
+    python3 immich-smart-albums.py --include-smart-union "cat" --album "My Cat Album"
+    ```
+
+### Advanced Usage
+
+The script provides a wide range of options for filtering and combining assets.
+
+**Note on Payload Handling:** For arguments that accept a payload (e.g., `--include-metadata-union`, `--include-smart-union`), the script intelligently determines if the input is a file path (ending with `.json`) or a direct JSON string. A convenient way to construct complex search queries is to use the Immich web UI's search functionality. The resulting JSON payload for your search query is often visible in the browser's address bar, which you can then copy and save as a `.json` file for use with this script.
+
+Here are some of the key arguments:
+
+*   `--include-metadata-union`: Include assets that match any of the specified metadata filters.
+*   `--include-metadata-intersection`: Include assets that match all of the specified metadata filters.
+*   `--exclude-metadata-union`: Exclude assets that match any of the specified metadata filters.
+*   `--exclude-metadata-intersection`: Exclude assets that match all of the specified metadata filters.
+*   `--include-smart-union`: Include assets that match any of the specified smart search queries.
+*   `--include-smart-intersection`: Include assets that match all of the specified smart search queries.
+*   `--exclude-smart-union`: Exclude assets that match any of the specified smart search queries.
+*   `--exclude-smart-intersection`: Exclude assets that match all of the specified smart search queries.
+*   `--include-person-ids-union`: Include assets that contain any of the specified person IDs.
+*   `--include-person-ids-intersection`: Include assets that contain all of the specified person IDs.
+*   `--exclude-person-ids-union`: Exclude assets that contain any of the specified person IDs.
+*   `--exclude-person-ids-intersection`: Exclude assets that contain all of the specified person IDs.
+*   `--include-local-filter-union`: Include assets that match any of the specified local filters (JSONPath and regex).
+*   `--include-local-filter-intersection`: Include assets that match all of the specified local filters.
+*   `--exclude-local-filter-union`: Exclude assets that match any of the specified local filters.
+*   `--exclude-local-filter-intersection`: Exclude assets that match all of the specified local filters.
+
+**Note on Smart Search Threshold:** Immich's smart search results are sorted by their match ratio and require a threshold to return results. You can specify this threshold using the `@amount` filter within your query (e.g., `"dog@200"` for a threshold of 200). The default threshold is typically 200 if not specified.
+
+**Performance Note:** Each value provided to an `include` or `exclude` parameter (e.g., `--include-metadata-union "filter1.json" "filter2.json"`) results in a separate Immich API call. Each of these calls might involve loading multiple pages of assets. While Immich's search is generally efficient, for optimal performance, consider merging multiple search criteria into a single JSON search query whenever possible to reduce the number of API round trips.
+
+For more details on the available arguments, run the script with the `--help` flag.
+
 
 ## Available Fields for Local Filters
 
@@ -490,70 +304,19 @@ Local filters (`--*-local-filter-*`) operate on the asset data fetched *after* t
 }
 ```
 
-**Note:** The `people` array within this asset detail structure is typically empty in the data fetched by this script. To filter by people, use the `personIds` field within a **Metadata Filter** file (`--include-metadata-*` or `--exclude-metadata-*`).
 
-## Important Notes & Tips
+## Filter Examples
 
-*   **Finding Album/Person IDs:** Get Album UUIDs from the URL when viewing an album. Get Person UUIDs from the URL when viewing a specific person's page (`/people/...`).
-*   **Smart Search (`resultLimit`):** *Always* include `"resultLimit"` in your smart search filter JSON (e.g., `{ "query": "dog", "resultLimit": 200 }`). Without it, the API might return *all* assets sorted by relevance, which is slow and often includes irrelevant results. Be aware that if you ask for 200 results but only 10 truly match, the API might pad the results with less relevant items.
-*   **Preview First:** Always run without `--album` first to check the results.
-*   **Local Filter Dependency:** Remember that local filters (`--*-local-filter-*`) only process assets already fetched by a metadata or smart search filter in the same command. They cannot be the *only* filter type used.
-*   **Performance:**
-    *   Metadata searches are generally faster than smart searches.
-    *   Use `resultLimit` in smart searches to reduce load.
-    *   Use `--max-assets` to limit the final number added, especially during initial runs.
-    *   Complex local filter regex can be slower than simpler Immich API searches.
+The `filters` directory contains a variety of example filters that you can use and adapt. Here are a few examples:
 
-## Use Cases
+*   `metadata-favorites.json`: Selects all favorite photos.
+*   `smart-vehicles.json`: Selects all photos that contain vehicles.
+*   `localfilter-highiso.json`: Selects all photos with an ISO higher than 1600.
 
-*   **Date-Based Albums:** Automatically create albums for specific years, quarters, or events (e.g., "Summer 2024", "Christmas 2023").
-*   **People Albums:** Keep albums updated with photos of specific individuals or groups (e.g., "Kids", "Family Gatherings").
-*   **Location Albums:** Collect photos taken in specific cities, states, or countries.
-*   **Theme Albums:** Use smart search for albums like "Beach Trips", "Hiking Adventures", "Food Photos".
-*   **Camera/Device Albums:** Create albums for photos taken with specific cameras or phones using local filters.
-*   **Combined Criteria:** Find photos of specific people *at* a specific location or *during* a specific time period.
-*   **Exclusion Use Case:** Create a "Best Of" album but exclude blurry photos (if Immich adds such a smart tag) or photos containing specific objects/people.
+## Contributing
 
-## Automation
-
-You can easily run this script periodically using `cron` (Linux/macOS) or Task Scheduler (Windows).
-
-Create a simple shell script (e.g., `update_albums.sh`):
-
-```bash
-#!/bin/bash
-
-# Ensure script directory is current directory (adjust path if needed)
-cd /path/to/immich-smart-albums
-
-# Load environment variables if not already set globally
-export IMMICH_SERVER_URL="https://your-immich.example.com"
-export IMMICH_API_KEY="your_api_key"
-
-echo "Starting Immich Smart Album update..."
-
-# Example 1: Update Summer Beach Album
-python3 immich-smart-albums.py \
-  --include-smart-union filters/beach.json \
-  --include-metadata-union filters/summer-dates.json \
-  --album summer-beach-album-id \
-  --verbose
-
-# Example 2: Update Family Photos Album (excluding maybe work photos based on path)
-# Create filters/local-exclude-work.json: [{"path": "$.originalPath", "regex": "/work-related-folder/"}]
-python3 immich-smart-albums.py \
-  --include-metadata-union filters/family-person-ids.json \
-  --exclude-local-filter-union filters/local-exclude-work.json \
-  --album family-album-id \
-  --verbose
-
-echo "Album update complete."
-
-```
-
-Make it executable (`chmod +x update_albums.sh`) and schedule it with `crontab -e`.
+Contributions are welcome! Please feel free to open an issue or submit a pull request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+This project is licensed under the MIT License. See the `LICENSE` file for details.

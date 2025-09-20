@@ -1,0 +1,1 @@
+[ { "path": "$.originalPath", "regex": "trip", "description": "Files from trip folder with path starting with /trip/2" } ]

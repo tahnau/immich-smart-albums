@@ -1,2 +1,8 @@
-secrets.sh
 docker/.env
+immich-smart-albums.sh
+archive/
+backup.sh
+__pycache__/
+*.pyc
+lib/__pycache__/
+lib/*.pyc

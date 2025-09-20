@@ -3,9 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    env_file:
+      - ../.env
     environment:
-      - IMMICH_SERVER_URL=${IMMICH_SERVER_URL}
-      - IMMICH_API_KEY=${IMMICH_API_KEY}
-    volumes:
-      - ./config:/app/config
-    restart: unless-stopped 
+      - IMMICH_SERVER_URL=http://172.17.0.1:2283 # IMPORTANT: Replace with your Docker host IP (e.g., `ip addr show docker0` on Linux)

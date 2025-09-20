@@ -1,0 +1,52 @@
+cat immich-smart-albums.sh
+#!/bin/bash
+
+# This script demonstrates advanced Immich smart album management for multiple users/accounts.
+# It filters by person names and excludes NSFW content.
+#
+# Prerequisites:
+# - .env file with IMMICH_SERVER_URL and multiple API keys (e.g., IMMICH_API_KEY_1, IMMICH_API_KEY_2).
+# - Immich with recognized person names (Adam, Roy, Ron) and albums (family-internal, family-public).
+
+# Navigate to the project directory
+cd "$(dirname "$0")" || { echo "Failed to change directory"; exit 1; }
+
+# Load environment variables from .env (e.g., IMMICH_API_KEY_1, IMMICH_API_KEY_2).
+set -a; . ./.env; set +a
+
+# Create filter directory.
+mkdir -p my_filters
+
+# Define person names (or UUIDs).
+PERSON1="Adam"
+PERSON2="Roy"
+PERSON3="Ron"
+#PERSON1="8fbe472e-7463-4d97-ae2d-3efb3270e153" # Example UUID
+
+# Define target album names (or UUIDs).
+FAMILY_ALBUM="family-internal"
+PUBLIC_ALBUM="family-public"
+
+# Create smart filter JSONs for NSFW exclusion.
+echo '{"query":"nsfw", "resultLimit":300}' > my_filters/smart-nsfw-1.json
+echo '{"query":"nudity", "resultLimit":300}' > my_filters/smart-nsfw-2.json
+echo '{"query":"porn", "resultLimit":300}' > my_filters/smart-nsfw-3.json
+echo '{"query":"nude", "resultLimit":300}' > my_filters/smart-nsfw-4.json
+
+# Assume IMMICH_API_KEY_1 and IMMICH_API_KEY_2 are defined in your .env file or environment.
+
+# --- Person1's Account (using IMMICH_API_KEY_1) ---
+# These commands add assets featuring PERSON1, PERSON2, and PERSON3 to the FAMILY_ALBUM.
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_1" --include-person-names-union "$PERSON1" --album $FAMILY_ALBUM
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_1" --include-person-names-union "$PERSON2" --album $FAMILY_ALBUM
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_1" --include-person-names-union "$PERSON3" --album $FAMILY_ALBUM
+# This command adds assets featuring PERSON3 to the PUBLIC_ALBUM, excluding NSFW content.
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_1" --include-person-names-union "$PERSON3" --album $PUBLIC_ALBUM --exclude-smart-union my_filters/smart-nsfw-*.json
+
+# --- Person2's Account (using IMMICH_API_KEY_2) ---
+# These commands add assets featuring PERSON1, PERSON2, and PERSON3 to the FAMILY_ALBUM.
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_2" --include-person-names-union "$PERSON1" --album $FAMILY_ALBUM
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_2" --include-person-names-union "$PERSON2" --album $FAMILY_ALBUM
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_2" --include-person-names-union "$PERSON3" --album $FAMILY_ALBUM
+# This command adds assets featuring PERSON3 to the PUBLIC_ALBUM, excluding NSFW content.
+python3 immich-smart-albums.py --key "$IMMICH_API_KEY_2" --include-person-names-union "$PERSON3" --album $PUBLIC_ALBUM --exclude-smart-union my_filters/smart-nsfw-*.json
