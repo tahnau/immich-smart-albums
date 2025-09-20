@@ -1,9 +1,9 @@
 # Immich Smart Albums
 
-This utility automates the creation and updating of dynamic photo albums in your [Immich](https://immich.app/) instance. It combines Immich's powerful metadata and AI-powered smart search with advanced local filtering (JSONPath and regex) to precisely organize your photos.
+This utility automates the updating of dynamic photo albums in your [Immich](https://immich.app/) instance. It combines Immich's powerful metadata and AI-powered smart search with advanced local filtering (JSONPath and regex) to precisely organize your photos.
 
 **Use Cases:**
-*   **Automated Sharing:** Automatically share photos of specific people from multiple Immich accounts into a single, shared album.
+*   **Automated Sharing:** Automatically share photos of specific people from multiple Immich accounts into shared albums.
 *   **Curated Public Albums:** Create "sanitized" albums for public viewing (e.g., family photos for relatives) by excluding sensitive content or specific individuals.
 *   **Relationship Management:** Easily filter out photos where you and an "ex" appear together, ensuring your albums reflect current preferences.
 *   **Advanced Organization:** Build highly specific albums based on criteria like camera model, ISO, file path, or any other EXIF/asset metadata.
@@ -60,7 +60,7 @@ python3 immich-smart-albums.py \
   --album "Jane's Album (Post 2020, No 2022)"
 ```
 
-For more complex or reusable date ranges, you can define them in a JSON file. For example, to create an album for "Summer 2025", first create `filters/summer-2025.json`:
+For more complex or reusable date ranges, you can define them in a JSON file. For example, to create an album for "Summer 2025", first create `my_filters/summer-2025.json`:
 
 ```json
 {
@@ -70,14 +70,14 @@ For more complex or reusable date ranges, you can define them in a JSON file. Fo
 ```
 Then, run the script:
 ```bash
-python3 immich-smart-albums.py --include-metadata-union filters/summer-2025.json --album "Summer 2025"
+python3 immich-smart-albums.py --include-metadata-union my_filters/summer-2025.json --album "Summer 2025"
 ```
 
 ### Advanced Filtering with Local Filters
 
 Sometimes, Immich's API doesn't expose all the properties we need for filtering. This is where **local filters** shine, allowing you to filter on asset data like `originalPath` using JSONPath and regular expressions. These filters are applied *after* the initial Immich API calls.
 
-Let's say we want to ensure no work-related photos from `/photos/work_projects/` appear in Jane's personal album. First, define this filter in `filters/localfilter-no-work-photos.json`:
+Let's say we want to ensure no work-related photos from `/photos/work_projects/` appear in Jane's personal album. First, define this filter in `my_filters/localfilter-no-work-photos.json`:
 
 ```json
 [
@@ -90,7 +90,7 @@ Then, integrate it into your command:
 python3 immich-smart-albums.py \
   --include-person-names-union "Jane Doe" \
   --include-metadata-union '{"takenAfter": "2021-01-01T00:00:00.000Z"}' \
-  --exclude-local-filter-union filters/localfilter-no-work-photos.json \
+  --exclude-local-filter-union my_filters/localfilter-no-work-photos.json \
   --album "Jane's Album (No Work Photos)"
 ```
 (Note: Local filters are applied to assets already selected by other API calls. If you want to filter an entire library by `originalPath`, you might need a broad initial filter like `metadata-all-photos.json` to fetch all assets first, which can be slow.)
@@ -109,10 +109,10 @@ Immich's smart search results are sorted by their match ratio. If you have many 
 python3 immich-smart-albums.py --include-smart-union "dog@500" --album "Dogs (Top 500)"
 ```
 
-For the discerning dog lover, we might want to exclude any dog photos that *also* contain **cats**:
+For the discerning dog lover, we might want to exclude any dog photos that *also* contain **cats** or **hamsters**:
 
 ```bash
-python3 immich-smart-albums.py --include-smart-union "dog" --exclude-smart-union "cat" --album "Dogs (No Cats)"
+python3 immich-smart-albums.py --include-smart-union "dog" --exclude-smart-union "cat" "hamster" --album "Dogs (No Cats. No Hamsters)"
 ```
 (Smart search queries can also be provided via JSON files for more complex or reusable queries.)
 
@@ -161,6 +161,9 @@ docker compose run immich-smart-albums --include-smart-intersection my_filters/s
 
 # Execute a custom script within the container
 docker compose run immich-smart-albums bash -c "./my_custom_script.sh"
+
+# Inspect logs
+docker compose logs -f
 ```
 
 ## Usage
@@ -312,7 +315,7 @@ Local filters (`--*-local-filter-*`) operate on the asset data fetched *after* t
 
 ## Filter Examples
 
-The `filters` directory contains a variety of example filters that you can use and adapt. Here are a few examples:
+The `my_filters` directory contains a variety of example filters that you can use and adapt. Here are a few examples:
 
 *   `metadata-favorites.json`: Selects all favorite photos.
 *   `smart-vehicles.json`: Selects all photos that contain vehicles.
