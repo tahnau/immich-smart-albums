@@ -8,6 +8,8 @@ This utility automates the updating of dynamic photo albums in your [Immich](htt
 *   **Relationship Management:** Easily filter out photos where you and an "ex" appear together, ensuring your albums reflect current preferences.
 *   **Advanced Organization:** Build highly specific albums based on criteria like camera model, ISO, file path, or any other EXIF/asset metadata.
 
+**Disclaimer:** This application was primarily AI-generated for a specific use case (managing multiple Immich accounts and curated albums), but has been made more generic to support a wider range of smart album creation scenarios. Please note that not all features have been extensively tested. Enjoy!
+
 ## Getting Started: Building Your First Smart Album
 
 Our first goal is to create an album for our friend, **Jane Doe**. We can easily do this by including her name:
