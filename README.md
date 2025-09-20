@@ -152,6 +152,8 @@ The Docker setup uses the `.env` file in the project root for `IMMICH_SERVER_URL
 
 **Commands:**
 ```bash
+cd docker
+
 # Build the Docker image
 docker compose build
 
@@ -162,7 +164,7 @@ docker compose run immich-smart-albums
 docker compose run immich-smart-albums --include-smart-intersection my_filters/smart-dog.json
 
 # Execute a custom script within the container
-docker compose run immich-smart-albums bash -c "./my_custom_script.sh"
+docker compose run --entrypoint "bash" immich-smart-albums -c "bash ./immich-smart-albums.sh"
 
 # Inspect logs
 docker compose logs -f
