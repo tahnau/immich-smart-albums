@@ -287,5 +287,61 @@ c14_4=$(count_urls --include-smart-union "dog @10")
 echo "Include with inline limit 'dog @10': $c14_4"
 [ "$c14_4" -le 10 ] || exit 1
 
+heading "Test Case 15: Multiple Argument Occurrences"
+
+# 1. Multiple Union Includes
+c15_1_single=$(count_urls --include-person-names-union "$P1" "$P2")
+c15_1_multiple=$(count_urls --include-person-names-union "$P1" --include-person-names-union "$P2")
+echo "Union(P1,P2) single arg: $c15_1_single"
+echo "Union(P1,P2) multiple args: $c15_1_multiple"
+[ "$c15_1_single" -eq "$c15_1_multiple" ] || { echo "Multiple Union Includes failed"; exit 1; }
+
+# 2. Multiple Intersection Includes
+c15_2_single=$(count_urls --include-person-names-intersection "$P1" "$P2" "$P3")
+c15_2_multiple=$(count_urls --include-person-names-intersection "$P1" "$P2" --include-person-names-intersection "$P2" "$P3")
+echo "Inter(P1,P2,P3) single arg: $c15_2_single"
+echo "Inter(P1,P2,P3) multiple args: $c15_2_multiple"
+[ "$c15_2_single" -eq "$c15_2_multiple" ] || { echo "Multiple Intersection Includes failed"; exit 1; }
+
+# 3. Multiple Union Excludes
+c15_3_single=$(count_urls --include-person-names-union "$P1" "$P2" "$P3" --exclude-person-names-union "$P1" "$P2")
+c15_3_multiple=$(count_urls --include-person-names-union "$P1" "$P2" "$P3" --exclude-person-names-union "$P1" --exclude-person-names-union "$P2")
+echo "Excl Union(P1,P2) single arg: $c15_3_single"
+echo "Excl Union(P1,P2) multiple args: $c15_3_multiple"
+[ "$c15_3_single" -eq "$c15_3_multiple" ] || { echo "Multiple Union Excludes failed"; exit 1; }
+
+# 4. Multiple Intersection Excludes
+c15_4_single=$(count_urls --include-person-names-union "$P1" "$P2" "$P3" --exclude-person-names-intersection "$P1" "$P2" "$P3")
+c15_4_multiple=$(count_urls --include-person-names-union "$P1" "$P2" "$P3" --exclude-person-names-intersection "$P1" "$P2" --exclude-person-names-intersection "$P2" "$P3")
+echo "Excl Inter(P1,P2,P3) single arg: $c15_4_single"
+echo "Excl Inter(P1,P2,P3) multiple args: $c15_4_multiple"
+[ "$c15_4_single" -eq "$c15_4_multiple" ] || { echo "Multiple Intersection Excludes failed"; exit 1; }
+
+echo "Test Case 16: Complex Exclusion of Intersecting Pairs"
+
+c16_AC_excl_pairs=$(count_urls \
+  --include-person-names-intersection "$P1" "$P3" \
+  --exclude-person-names-intersection "$P1" "$P2" \
+  --exclude-person-names-intersection "$P2" "$P3")
+echo "|P1 ∩ P3| excl (P1 ∩ P2) and (P2 ∩ P3): $c16_AC_excl_pairs"
+
+
+# Cross-check 1: Excluding B by UNION equals excluding the two pairs
+c16_AC_excl_B_union=$(count_urls \
+  --include-person-names-intersection "$P1" "$P3" \
+  --exclude-person-names-union "$P2")
+echo "|P1 ∩ P3| excl P2 (union): $c16_AC_excl_B_union"
+[ "$c16_AC_excl_B_union" -eq "$c16_AC_excl_pairs" ] || { echo "Pair-exclusion vs union(B) mismatch"; exit 1; }
+
+# Cross-check 2: Excluding only the triple intersection equals the pair-exclusion result
+c16_AC_excl_ABC=$(count_urls \
+  --include-person-names-intersection "$P1" "$P3" \
+  --exclude-person-names-intersection "$P1" "$P2" "$P3")
+echo "|P1 ∩ P3| excl (P1 ∩ P2 ∩ P3): $c16_AC_excl_ABC"
+[ "$c16_AC_excl_ABC" -eq "$c16_AC_excl_pairs" ] || { echo "Excluding only the triple mismatch"; exit 1; }
+
+
+# ---------------------------
+
 echo
 echo "All tests passed!"

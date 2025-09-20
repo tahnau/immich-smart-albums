@@ -64,9 +64,11 @@ def _process_filters(
 def process_query_filters(filter_type, args, immich_api, all_search_assets):
     """Processes query-based filters (metadata, smart) for include and exclude."""
 
-    include_union_files = getattr(args, f"include_{filter_type}_union", None)
-    include_intersection_files = getattr(
+    include_union_files_list_of_lists = getattr(args, f"include_{filter_type}_union", None)
+    include_union_files = [item for sublist in include_union_files_list_of_lists for item in sublist] if include_union_files_list_of_lists else None
+    include_intersection_files_list_of_lists = getattr(
         args, f"include_{filter_type}_intersection", None)
+    include_intersection_files = [item for sublist in include_intersection_files_list_of_lists for item in sublist] if include_intersection_files_list_of_lists else None
 
     include_assets = _process_filters(
         immich_api,
@@ -77,9 +79,11 @@ def process_query_filters(filter_type, args, immich_api, all_search_assets):
         default_smart_result_limit=args.default_smart_result_limit
     )
 
-    exclude_union_files = getattr(args, f"exclude_{filter_type}_union", None)
-    exclude_intersection_files = getattr(
+    exclude_union_files_list_of_lists = getattr(args, f"exclude_{filter_type}_union", None)
+    exclude_union_files = [item for sublist in exclude_union_files_list_of_lists for item in sublist] if exclude_union_files_list_of_lists else None
+    exclude_intersection_files_list_of_lists = getattr(
         args, f"exclude_{filter_type}_intersection", None)
+    exclude_intersection_files = [item for sublist in exclude_intersection_files_list_of_lists for item in sublist] if exclude_intersection_files_list_of_lists else None
 
     exclude_assets = _process_filters(
         immich_api,
@@ -145,14 +149,18 @@ def process_local_filters(args, asset_list_for_local_filtering):
     """Processes local filters for include and exclude."""
 
     local_filter = Filter(args.verbose)
+    flat_include_local_filter_union = [item for sublist in args.include_local_filter_union for item in sublist] if args.include_local_filter_union else None
     local_include_union_filters = local_filter.parse_filters(
-        args.include_local_filter_union)
+        flat_include_local_filter_union)
+    flat_include_local_filter_intersection = [item for sublist in args.include_local_filter_intersection for item in sublist] if args.include_local_filter_intersection else None
     local_include_intersection_filters = local_filter.parse_filters(
-        args.include_local_filter_intersection)
+        flat_include_local_filter_intersection)
+    flat_exclude_local_filter_union = [item for sublist in args.exclude_local_filter_union for item in sublist] if args.exclude_local_filter_union else None
     local_exclude_union_filters = local_filter.parse_filters(
-        args.exclude_local_filter_union)
+        flat_exclude_local_filter_union)
+    flat_exclude_local_filter_intersection = [item for sublist in args.exclude_local_filter_intersection for item in sublist] if args.exclude_local_filter_intersection else None
     local_exclude_intersection_filters = local_filter.parse_filters(
-        args.exclude_local_filter_intersection)
+        flat_exclude_local_filter_intersection)
 
     local_include_assets = None
     if local_include_union_filters or local_include_intersection_filters:
@@ -241,8 +249,10 @@ def resolve_and_validate_names(args, immich_api):
         'exclude_person_names_intersection': 'exclude_person_ids_intersection'
     }
     for name_arg, id_arg in person_name_args.items():
-        person_names = getattr(args, name_arg)
-        if person_names:
+        person_names_list_of_lists = getattr(args, name_arg)
+        if person_names_list_of_lists:
+            # Flatten the list of lists into a single list of names
+            person_names = [name for sublist in person_names_list_of_lists for name in sublist]
             resolved_ids = []
             unresolved_names = []
             for name in set(person_names):

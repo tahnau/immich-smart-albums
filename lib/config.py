@@ -28,19 +28,19 @@ def get_config():
     local_exclude = {"union": "--exclude-local-filter-union", "intersection": "--exclude-local-filter-intersection"}
 
     # Add arguments for person names with explicit logic
-    parser.add_argument("--include-person-names-union", nargs="+", type=str, help="Include assets containing ANY of these person names (union).")
-    parser.add_argument("--include-person-names-intersection", nargs="+", type=str, help="Include assets containing ALL of these person names (intersection).")
-    parser.add_argument("--exclude-person-names-union", nargs="+", type=str, help="Exclude assets containing ANY of these person names (union).")
-    parser.add_argument("--exclude-person-names-intersection", nargs="+", type=str, help="Exclude assets containing ALL of these person names (intersection).")
+    parser.add_argument("--include-person-names-union", nargs="+", action="append", type=str, help="Include assets containing ANY of these person names (union).")
+    parser.add_argument("--include-person-names-intersection", nargs="+", action="append", type=str, help="Include assets containing ALL of these person names (intersection).")
+    parser.add_argument("--exclude-person-names-union", nargs="+", action="append", type=str, help="Exclude assets containing ANY of these person names (union).")
+    parser.add_argument("--exclude-person-names-intersection", nargs="+", action="append", type=str, help="Exclude assets containing ALL of these person names (intersection).")
 
-    parser.add_argument("--include-person-ids-union", nargs="+", type=str, help=argparse.SUPPRESS)
-    parser.add_argument("--include-person-ids-intersection", nargs="+", type=str, help=argparse.SUPPRESS)
-    parser.add_argument("--exclude-person-ids-union", nargs="+", type=str, help=argparse.SUPPRESS)
-    parser.add_argument("--exclude-person-ids-intersection", nargs="+", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--include-person-ids-union", nargs="+", action="append", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--include-person-ids-intersection", nargs="+", action="append", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--exclude-person-ids-union", nargs="+", action="append", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--exclude-person-ids-intersection", nargs="+", action="append", type=str, help=argparse.SUPPRESS)
 
     for group in [smart_include, smart_exclude, meta_include, meta_exclude, local_include, local_exclude]:
         for mode, flag in group.items():
-            parser.add_argument(flag, nargs="+", type=str, help=f"Path to JSON files for {flag} (mode: {mode})")
+            parser.add_argument(flag, nargs="+", action="append", type=str, help=f"Path to JSON files for {flag} (mode: {mode})")
 
     args = parser.parse_args()
     if args.key is None:
