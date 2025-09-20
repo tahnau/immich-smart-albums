@@ -10,8 +10,8 @@ class ImmichAPI:
         self.server_url = server_url.rstrip('/')
         self.api_key = api_key
         self.verbose = verbose
-        log(f"Immich Server URL: {self.server_url}", verbose_only=False, verbose=True) # Always print for debugging
-        log(f"Immich API Key (first 5 chars): {self.api_key[:5]}...", verbose_only=False, verbose=True) # Always print for debugging
+        log(f"Immich Server URL: {self.server_url}", verbose_only=True, verbose=self.verbose)
+        log(f"Immich API Key (first 5 chars): {self.api_key[:5]}...", verbose_only=True, verbose=self.verbose)
         self.headers = {
             "x-api-key": self.api_key,
             "Accept": "application/json",

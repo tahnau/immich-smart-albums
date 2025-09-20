@@ -165,6 +165,7 @@ docker compose run immich-smart-albums --include-smart-intersection my_filters/s
 
 # Execute a custom script within the container
 docker compose run --entrypoint "bash" immich-smart-albums -c "bash ./immich-smart-albums.sh"
+docker compose run --entrypoint "bash" immich-smart-albums -c "python3 immich-smart-albums.py --verbose"
 
 # Inspect logs
 docker compose logs -f
