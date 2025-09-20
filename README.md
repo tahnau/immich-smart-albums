@@ -31,12 +31,13 @@ But what if we want an album that *only* shows photos where **Jane Doe and John 
 python3 immich-smart-albums.py --include-person-names-intersection "Jane Doe" "John Smith" --album "Jane and John Together"
 ```
 
-Finally, to refine our "Friends" album, let's exclude any photos where John Smith appears with his ex, **Mary Poppins**. We can achieve this by combining our union of friends with an `exclude-person-names-intersection`:
+Finally, to refine our "Friends" album, let’s exclude any photos where John Smith appears with his ex, Mary Poppins. We can also add an additional rule for Peter Pan and Wendy Darling, to show that multiple exclusions are possible. This is done by combining our union of friends with multiple --exclude-person-names-intersection options:
 
 ```bash
 python3 immich-smart-albums.py \
   --include-person-names-union "Jane Doe" "John Smith" "Peter Pan" \
   --exclude-person-names-intersection "John Smith" "Mary Poppins" \
+  --exclude-person-names-intersection "Peter Pan" "Wendy Darling" \
   --album "Friends (No Exes)"
 ```
 This demonstrates how you can precisely control who appears in your albums.
